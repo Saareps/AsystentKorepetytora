@@ -788,19 +788,31 @@ async function saveTask() {
   let media_url = document.getElementById("editMediaUrl").value || null;
   let media_type = document.getElementById("editMediaType").value || null;
 
+  // Sprawdzamy, czy wybrano plik (audio, wideo lub obraz)
   if (fileInput.files && fileInput.files[0]) {
     const file = fileInput.files[0];
-    const fileName = `media_${Date.now()}_${file.name}`;
-    await db.storage.from('uploads').upload(fileName, file);
-    const { data: { publicUrl } } = db.storage.from('uploads').getPublicUrl(fileName);
-    media_url = publicUrl;
+    // Usunięcie polskich znaków i spacji z nazwy pliku, aby nie psuły adresu URL
+    const cleanFileName = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9.-]/g, "_");
+    const filePath = `media_${Date.now()}_${cleanFileName}`;
+
+    const { data: uploadData, error: uploadError } = await db.storage
+      .from('uploads')
+      .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
+    if (uploadError) {
+      console.error("Szczegóły błędu Storage:", uploadError);
+      return alert("Błąd wysyłania pliku: " + uploadError.message + "\nUpewnij się, że wykonałeś skrypt SQL dla uprawnień storage!");
+    }
+
+    const { data: urlData } = db.storage.from('uploads').getPublicUrl(filePath);
+    media_url = urlData.publicUrl;
     media_type = file.type;
   }
 
   if (id) {
     await db.from('tasks').update({ title, content, media_url, media_type }).eq('id', id);
   } else {
-    await db.from('tasks').insert([{
+    const { error: insertError } = await db.from('tasks').insert([{
       subject_id: currentSubjectId,
       student_id: selectedStudentId,
       topic_id: currentTopicId,
@@ -811,8 +823,11 @@ async function saveTask() {
       media_url,
       media_type
     }]);
+
+    if (insertError) return alert("Błąd zapisu zadania w bazie: " + insertError.message);
   }
 
+  alert("Zadanie wraz z załącznikiem zostało pomyślnie wysłane!");
   resetTaskForm();
   loadTeacherTasks();
 }
@@ -1238,21 +1253,36 @@ async function submitStudentWork(id) {
   }
 
   let answer_drawing = null;
+
   if (hasDrawing && engine) {
+    // Generujemy czysty plik Blob z Canvasa
     const blob = await new Promise(res => engine.canvas.toBlob(res, 'image/png'));
-    const fileName = `ans_${id}_${Date.now()}.png`;
-    await db.storage.from('uploads').upload(fileName, blob);
-    const { data: { publicUrl } } = db.storage.from('uploads').getPublicUrl(fileName);
-    answer_drawing = publicUrl;
+    const filePath = `answer_${id}_${Date.now()}.png`;
+
+    const { data: uploadData, error: uploadError } = await db.storage
+      .from('uploads')
+      .upload(filePath, blob, { contentType: 'image/png', upsert: true });
+
+    if (uploadError) {
+      console.error("Błąd zapisu rysunku:", uploadError);
+      return alert("Nie udało się przesłać rysunku na serwer: " + uploadError.message);
+    }
+
+    const { data: urlData } = db.storage.from('uploads').getPublicUrl(filePath);
+    answer_drawing = urlData.publicUrl;
   }
 
-  await db.from('tasks').update({
+  const { error: updateError } = await db.from('tasks').update({
     answer_text: ansText,
     answer_drawing: answer_drawing,
     status: 'submitted'
   }).eq('id', id);
 
-  alert("Rozwiązanie zostało przesłane do korepetytora!");
+  if (updateError) {
+    return alert("Błąd aktualizacji statusu zadania: " + updateError.message);
+  }
+
+  alert("Rozwiązanie zostało zapisane i wysłane do korepetytora!");
   loadStudentTasks();
 }
 </script>
