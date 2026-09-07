@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Platforma Korepetycji — Panel Główny</title>
+  <title>System Korepetycji — Panel Zadań</title>
   
+  <!-- KaTeX -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
   <!-- Supabase JS Client -->
@@ -12,144 +13,365 @@
 
   <style>
     :root {
-      --primary: #2563eb; --bg: #f8fafc; --card: #ffffff;
-      --text: #0f172a; --muted: #64748b; --border: #e2e8f0;
-      --success: #16a34a; --danger: #dc2626; --warning: #d97706;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --success: #16a34a;
+      --success-bg: #dcfce7;
+      --warning: #d97706;
+      --warning-bg: #fef3c7;
+      --danger: #dc2626;
+      --danger-bg: #fee2e2;
+      --gray-bg: #f1f5f9;
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
-    header { background: #0f172a; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+
+    header {
+      background: #0f172a; color: white; padding: 1rem 2rem;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+    }
+
     .container { max-width: 1180px; width: 100%; margin: 1.5rem auto; padding: 0 1rem; flex: 1; }
-    .card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .btn { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.5rem 0.9rem; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; background: var(--primary); color: white; }
+    .card { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+
+    h1, h2, h3, h4 { margin-bottom: 0.5rem; }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.9rem;
+      border-radius: 6px; border: none; font-weight: 600; cursor: pointer;
+      background: var(--primary); color: white; transition: 0.2s; font-size: 0.88rem;
+    }
+    .btn:hover { background: var(--primary-hover); }
     .btn-secondary { background: #e2e8f0; color: #334155; }
-    .btn-danger { background: #fee2e2; color: var(--danger); }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-danger { background: var(--danger-bg); color: var(--danger); }
+    .btn-danger:hover { background: #fecaca; }
     .btn-success { background: var(--success); color: white; }
-    input, select, textarea { width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border); margin: 0.3rem 0 1rem; }
+
     .badge { padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; display: inline-block; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
-    .modal { position: fixed; inset: 0; background: rgba(15,23,42,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .badge-done { background: var(--success-bg); color: var(--success); border: 1px solid #86efac; }
+    .badge-pending { background: var(--warning-bg); color: var(--warning); border: 1px solid #fde68a; }
+    .badge-correction { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; }
+    .badge-archived { background: var(--gray-bg); color: var(--muted); border: 1px solid #cbd5e1; }
+
+    .tabs { display: flex; gap: 0.5rem; border-bottom: 2px solid var(--border); margin-bottom: 1rem; }
+    .tab-btn {
+      padding: 0.6rem 1.2rem; border: none; background: transparent; cursor: pointer;
+      font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px;
+    }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    .topics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .topic-card {
+      border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; background: white;
+      cursor: pointer; transition: transform 0.15s, border-color 0.15s;
+    }
+    .topic-card:hover { transform: translateY(-2px); border-color: var(--primary); }
+    .topic-stats { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.8rem; font-size: 0.85rem; }
+    .stat-row { display: flex; justify-content: space-between; align-items: center; }
+
+    .task-item { border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem; margin-bottom: 1rem; background: white; }
+    .task-item.submitted { border-left: 5px solid var(--success); }
+    .task-item.correction { border-left: 5px solid #e11d48; background: #fffcfc; }
+    .task-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.8rem; gap: 10px; flex-wrap: wrap; }
+    .task-body { margin-bottom: 1rem; line-height: 1.5; }
+
+    input, select, textarea {
+      width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border);
+      margin-top: 0.3rem; margin-bottom: 1rem; font-size: 0.95rem;
+    }
+    textarea { min-height: 80px; resize: vertical; }
+
+    /* Miro / Board Canvas Container */
+    .paint-box { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; margin-top: 1rem; position: relative; }
+    .paint-box.fullscreen {
+      position: fixed; inset: 0; z-index: 9999; border-radius: 0; margin: 0; display: flex; flex-direction: column;
+    }
+    .paint-toolbar {
+      background: #f8fafc; padding: 0.6rem; display: flex; gap: 0.5rem; align-items: center;
+      border-bottom: 1px solid var(--border); flex-wrap: wrap; font-size: 0.85rem;
+    }
+    .tool-btn {
+      padding: 0.35rem 0.65rem; border: 1px solid var(--border); border-radius: 4px;
+      background: white; cursor: pointer; font-weight: 500;
+    }
+    .tool-btn.active { background: #e0e7ff; border-color: #6366f1; color: #4338ca; font-weight: 700; }
+
+    .board-viewport {
+      width: 100%; height: 520px; overflow: hidden; position: relative;
+      background-color: #fcfcfc;
+      background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
+      background-size: 24px 24px;
+      cursor: crosshair; flex: 1;
+    }
+    .board-viewport.pan-mode { cursor: grab; }
+    .board-viewport.pan-mode:active { cursor: grabbing; }
+
+    .feedback-box {
+      background: #fffbeb; border-left: 4px solid var(--warning); padding: 0.8rem;
+      border-radius: 4px; margin-top: 0.8rem; font-size: 0.9rem;
+    }
+    .feedback-box.error-lead { background: #fff1f2; border-left-color: #e11d48; }
+
+    .breadcrumb { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; margin-bottom: 1rem; color: var(--muted); }
+    .breadcrumb a { color: var(--primary); text-decoration: none; cursor: pointer; }
+
+    .media-preview { max-width: 100%; border-radius: 6px; margin-top: 0.5rem; }
+    .login-container { max-width: 400px; margin: 4rem auto; }
+    
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6);
+      display: flex; align-items: center; justify-content: center; z-index: 100;
+    }
+
     .table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
     .table th, .table td { padding: 0.75rem; border-bottom: 1px solid var(--border); text-align: left; }
-    .paint-box { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; margin-top: 1rem; }
-    .board-viewport { width: 100%; height: 500px; overflow: hidden; position: relative; background: radial-gradient(#cbd5e1 1.2px, transparent 1.2px) 0 0/24px 24px #fcfcfc; cursor: crosshair; }
-    .pan-mode { cursor: grab !important; }
   </style>
 </head>
 <body>
 
 <header>
-  <div style="font-weight: 800; font-size: 1.2rem;">📐 Platforma Edukacyjna</div>
-  <div id="headerAuth" style="display:none; align-items: center; gap: 1rem;">
-    <span id="userNameBadge"></span>
-    <button class="btn btn-secondary" onclick="logout()">Wyloguj</button>
+  <div style="font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
+    <span>📐</span> Panel Korepetytora
+  </div>
+  <div id="headerUserInfo" style="display:none; align-items: center; gap: 1rem;">
+    <span id="loggedUserLabel" style="font-size: 0.9rem;"></span>
+    <button class="btn btn-secondary" onclick="logout()" style="padding: 0.3rem 0.7rem;">Wyloguj</button>
   </div>
 </header>
 
 <div class="container">
   <!-- LOGOWANIE -->
-  <div id="loginView" style="max-width: 400px; margin: 4rem auto;">
+  <div id="loginSection" class="login-container">
     <div class="card">
-      <h2 style="text-align:center; margin-bottom: 1rem;">Zaloguj się</h2>
+      <h2 style="text-align:center; margin-bottom: 1.5rem;">Logowanie</h2>
       <form onsubmit="handleLogin(event)">
         <label>Login:</label>
-        <input type="text" id="logUser" required placeholder="Login...">
+        <input type="text" id="loginUsername" required placeholder="np. superadmin, korepetytor lub uczen">
+        
         <label>Hasło:</label>
-        <input type="password" id="logPass" required placeholder="Hasło...">
-        <button type="submit" class="btn" style="width: 100%; justify-content: center;">Wejdź do systemu</button>
+        <input type="password" id="loginPassword" required placeholder="••••••••">
+        
+        <button type="submit" class="btn" style="width: 100%; justify-content: center; margin-top: 0.5rem;">Zaloguj się</button>
       </form>
-      <div style="margin-top:1rem; font-size:0.8rem; color:var(--muted); background:#f1f5f9; padding:0.6rem; border-radius:6px;">
-        Superadmin: <strong>superadmin</strong> / <strong>super123</strong>
+      <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--muted); background: #f1f5f9; padding: 0.6rem; border-radius: 6px;">
+        Główny Superadmin:<br>
+        Login: <strong>superadmin</strong> | Hasło: <strong>super123</strong>
       </div>
     </div>
   </div>
 
-  <!-- 1. PANEL SUPERADMINA (Główny Właściciel) -->
-  <div id="superadminView" style="display:none;">
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <div>
-          <h2>Panel Superadmina</h2>
-          <p style="color:var(--muted);">Zarządzaj wszystkimi korepetytorami, ich uczniami i bazą.</p>
-        </div>
-        <button class="btn" onclick="openAddTeacherModal()">➕ Dodaj Korepetytora</button>
-      </div>
-    </div>
+  <!-- APLIKACJA -->
+  <div id="appSection" style="display:none;">
 
-    <div class="card">
-      <h3>Lista Korepetytorów</h3>
-      <table class="table" id="teachersTable">
-        <thead>
-          <tr><th>Imię i Nazwisko</th><th>Login</th><th>Hasło</th><th>Liczba uczniów</th><th>Akcje</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- 2. PANEL KOREPETYTORA -->
-  <div id="teacherView" style="display:none;">
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-        <div style="display:flex; gap:0.5rem; align-items:center;">
-          <label style="font-weight:700; margin:0;">Przedmiot:</label>
-          <select id="teacherSubSel" onchange="loadTeacherStudents()" style="width:auto; margin:0;"></select>
-          <button class="btn btn-secondary" onclick="addSubjectPrompt()">➕ Przedmiot</button>
-        </div>
-        <div style="display:flex; gap:0.5rem; align-items:center;">
-          <label style="font-weight:700; margin:0;">Uczeń:</label>
-          <select id="teacherStuSel" onchange="loadTeacherTopics()" style="width:auto; margin:0;"></select>
-          <button class="btn btn-secondary" onclick="openAddStudentModal()">➕ Nowy uczeń</button>
-          <button class="btn btn-secondary" onclick="manageCurrentStudent()">⚙️ Zarządzaj</button>
+    <!-- 1. WIDOK SUPERADMINA -->
+    <div id="superadminView" style="display:none;">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h2>Panel Główny Superadmina</h2>
+            <p class="muted">Zarządzaj wszystkimi korepetytorami, ich uczniami oraz dostępami.</p>
+          </div>
+          <button class="btn" onclick="openAddTeacherModal()">➕ Dodaj Korepetytora</button>
         </div>
       </div>
-    </div>
 
-    <div id="teacherTopicList" class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-        <h3>Tematy lekcji</h3>
-        <button class="btn" onclick="addTopicPrompt()">➕ Dodaj temat</button>
+      <div class="card">
+        <h3>Lista Korepetytorów</h3>
+        <table class="table" id="teachersTable">
+          <thead>
+            <tr><th>Imię i Nazwisko</th><th>Login</th><th>Hasło</th><th>Liczba uczniów</th><th>Akcje</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
       </div>
-      <div id="topicsGrid" class="grid"></div>
-    </div>
-
-    <!-- Zadania wewnątrz tematu -->
-    <div id="teacherTasksWrap" class="card" style="display:none;">
-      <button class="btn btn-secondary" style="margin-bottom:1rem;" onclick="backToTopicsTeacher()">← Wróć do tematów</button>
-      <h3 id="currentTopicTitle" style="margin-bottom:1rem;"></h3>
-      
-      <div style="background:#f8fafc; border:1px solid var(--border); padding:1rem; border-radius:8px; margin-bottom:1rem;">
-        <h4>Dodaj zadanie domowe</h4>
-        <input type="text" id="tTitle" placeholder="Tytuł zadania...">
-        <textarea id="tContent" placeholder="Treść zadania ($...$ dla KaTeX)..."></textarea>
-        <button class="btn" onclick="createTask()">Wyślij zadanie uczniowi</button>
-      </div>
-
-      <div id="teacherTasksContainer"></div>
-    </div>
-  </div>
-
-  <!-- 3. PANEL UCZNIA -->
-  <div id="studentView" style="display:none;">
-    <div class="card">
-      <h2 id="stuGreeting">Cześć!</h2>
-      <p style="color:var(--muted);">Rozwiązuj zadania na tablicy i wysyłaj je do sprawdzenia.</p>
     </div>
     
-    <div id="stuTopicsCard" class="card">
-      <h3>Twoje tematy lekcji</h3>
-      <div id="stuTopicsGrid" class="grid" style="margin-top:1rem;"></div>
+    <!-- 2. WIDOK NAUCZYCIELA -->
+    <div id="teacherView" style="display:none;">
+      <!-- Wybór Przedmiotu i Ucznia -->
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          
+          <div style="display:flex; align-items:center; gap:0.6rem;">
+            <label style="font-weight:700; margin:0;">Przedmiot:</label>
+            <select id="teacherSubjectSelect" onchange="changeTeacherSubject()" style="width:auto; margin:0; font-weight:700;"></select>
+            <button class="btn btn-secondary" style="padding:0.3rem 0.6rem;" onclick="openAddSubjectModal()">➕ Nowy przedmiot</button>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:0.6rem;">
+            <label style="font-weight:700; margin:0;">Uczeń:</label>
+            <select id="teacherStudentSelect" onchange="changeTeacherStudent()" style="width:auto; margin:0; font-weight:600;"></select>
+            <button class="btn btn-secondary" style="padding:0.3rem 0.6rem;" onclick="openAddStudentModal()">➕ Dodaj ucznia</button>
+            <button class="btn btn-secondary" style="padding:0.3rem 0.6rem;" onclick="openManageStudentModal()" id="btnManageStudent">⚙️ Zarządzaj uczniem</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Tematy Nauczyciela -->
+      <div id="teacherTopicsView">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <h3 id="teacherTopicsHeader">Tematy lekcji</h3>
+            <div style="display:flex; gap:0.5rem;">
+              <input type="text" id="newTopicName" placeholder="Nazwa nowego tematu..." style="margin:0; width:220px;">
+              <button class="btn" onclick="addNewTopic()">Dodaj temat</button>
+            </div>
+          </div>
+          <div id="teacherTopicsGrid" class="topics-grid"></div>
+        </div>
+      </div>
+
+      <!-- Zadania w Temacie -->
+      <div id="teacherTasksView" style="display:none;">
+        <div class="breadcrumb">
+          <a onclick="backToTopicsTeacher()">← Powrót do tematów</a>
+          <span>/</span>
+          <span id="teacherCurrentTopicBreadcrumb"></span>
+        </div>
+
+        <div class="card">
+          <h3 id="formTitle">➕ Dodaj zadanie domowe</h3>
+          <input type="hidden" id="editTaskId" value="">
+
+          <label>Tytuł zadania</label>
+          <input type="text" id="taskTitle" placeholder="np. Obliczenia procentowe lub równanie">
+
+          <label>Treść zadania (LaTeX w $...$ lub $$...$$)</label>
+          <textarea id="taskContent" placeholder="Wpisz treść..."></textarea>
+
+          <label>Załącznik multimedialny (Obraz, MP3 lub MP4):</label>
+          <input type="file" id="taskMediaInput" accept="image/*,audio/mp3,audio/mpeg,video/mp4" style="margin-bottom:0.5rem;">
+          <input type="hidden" id="editMediaUrl" value="">
+          <input type="hidden" id="editMediaType" value="">
+          <div id="mediaEditPreview" style="margin-bottom: 1rem;"></div>
+
+          <div style="display:flex; gap: 0.5rem;">
+            <button class="btn" onclick="saveTask()">Wyślij zadanie uczniowi</button>
+            <button class="btn btn-secondary" id="cancelEditBtn" style="display:none;" onclick="resetTaskForm()">Anuluj edycję</button>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTeacherTaskTab('active', this)">⚡ Aktywne zadania</button>
+          <button class="tab-btn" onclick="switchTeacherTaskTab('archived', this)">📦 Archiwum tematu</button>
+        </div>
+
+        <div id="teacherTaskList"></div>
+      </div>
     </div>
 
-    <div id="stuTasksCard" class="card" style="display:none;">
-      <button class="btn btn-secondary" style="margin-bottom:1rem;" onclick="backToTopicsStudent()">← Wróć do tematów</button>
-      <div id="stuTasksContainer"></div>
+    <!-- 3. WIDOK UCZNIA -->
+    <div id="studentView" style="display:none;">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h2 id="studentWelcome">Cześć!</h2>
+            <p class="muted">Wybierz temat, aby rozwiązać zadania lub powtórzyć materiał.</p>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <label style="font-weight:700; margin:0;">Przedmiot:</label>
+            <select id="studentSubjectSelect" onchange="changeStudentSubject()" style="width:auto; margin:0; font-weight:700;"></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tematy Ucznia -->
+      <div id="studentTopicsView">
+        <div class="card">
+          <h3>Tematy lekcji</h3>
+          <div id="studentTopicsGrid" class="topics-grid"></div>
+        </div>
+      </div>
+
+      <!-- Zadania Ucznia -->
+      <div id="studentTasksView" style="display:none;">
+        <div class="breadcrumb">
+          <a onclick="backToTopicsStudent()">← Wróć do listy tematów</a>
+          <span>/</span>
+          <span id="studentCurrentTopicBreadcrumb"></span>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchStudentTaskTab('pending', this)">📝 Do zrobienia (<span id="countStudentPending">0</span>)</button>
+          <button class="tab-btn" onclick="switchStudentTaskTab('done', this)">✅ Zrobione / Archiwum (<span id="countStudentDone">0</span>)</button>
+        </div>
+
+        <div id="studentTaskList"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: DODAWANIE PRZEDMIOTU -->
+<div id="addSubjectModal" class="modal-overlay" style="display:none;">
+  <div class="card" style="max-width: 400px; width: 90%;">
+    <h3>➕ Dodaj nowy przedmiot</h3>
+    <label>Nazwa przedmiotu:</label>
+    <input type="text" id="newSubjectName" placeholder="np. Matematyka, Język angielski, Fizyka">
+    <div style="display:flex; justify-content: flex-end; gap:0.5rem; margin-top: 1rem;">
+      <button class="btn btn-secondary" onclick="closeAddSubjectModal()">Anuluj</button>
+      <button class="btn" onclick="confirmAddSubject()">Dodaj przedmiot</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL: DODAJ / EDYTUJ KOREPETYTORA -->
-<div id="teacherModal" class="modal" style="display:none;">
+<!-- MODAL: DODAWANIE UCZNIA -->
+<div id="addStudentModal" class="modal-overlay" style="display:none;">
+  <div class="card" style="max-width: 440px; width: 90%;">
+    <h3>➕ Dodaj ucznia do tego przedmiotu</h3>
+    <label>Imię i nazwisko ucznia:</label>
+    <input type="text" id="newStudentName" placeholder="np. Kasia Kowalska">
+
+    <label>Login:</label>
+    <input type="text" id="newStudentLogin" placeholder="np. kasia">
+
+    <label>Hasło:</label>
+    <input type="text" id="newStudentPass" placeholder="np. kasia123">
+
+    <div style="display:flex; justify-content: flex-end; gap:0.5rem; margin-top: 1rem;">
+      <button class="btn btn-secondary" onclick="closeAddStudentModal()">Anuluj</button>
+      <button class="btn" onclick="confirmAddStudent()">Zapisz ucznia</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ZARZĄDZAJ UCZNIEM -->
+<div id="manageStudentModal" class="modal-overlay" style="display:none;">
+  <div class="card" style="max-width: 440px; width: 90%;">
+    <h3>⚙️ Zarządzaj uczniem</h3>
+    <input type="hidden" id="manageStudentId">
+
+    <label>Imię i nazwisko:</label>
+    <input type="text" id="manageStudentName">
+
+    <label>Login:</label>
+    <input type="text" id="manageStudentLogin">
+
+    <label>Hasło:</label>
+    <input type="text" id="manageStudentPass">
+
+    <div style="display:flex; justify-content: space-between; align-items:center; margin-top: 1rem;">
+      <button class="btn btn-danger" onclick="deleteStudent()">🗑️ Usuń ucznia</button>
+      <div style="display:flex; gap:0.5rem;">
+        <button class="btn btn-secondary" onclick="closeManageStudentModal()">Anuluj</button>
+        <button class="btn" onclick="saveStudentChanges()">Zapisz zmiany</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DODAJ / EDYTUJ KOREPETYTORA (SUPERADMIN) -->
+<div id="teacherModal" class="modal-overlay" style="display:none;">
   <div class="card" style="max-width:400px; width:90%;">
     <h3 id="teacherModalTitle">Korepetytor</h3>
     <input type="hidden" id="tmId">
@@ -167,49 +389,50 @@
 </div>
 
 <script>
-/* ================= KONFIGURACJA SUPABASE ================= */
-// WKLEJ TUTAJ SWOJE DANE Z SUPABASE (Project Settings -> API):
+/* KONFIGURACJA SUPABASE */
 const SUPABASE_URL = "https://xhfqdzxjgodyozcusthc.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoZnFkenhqZ29keW96Y3VzdGhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3OTQ3MDYsImV4cCI6MjEwNDM3MDcwNn0.xIs6smzq5k6R6epv8MuVEFzgoacdhUpNrkHApMxgTWI";
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;
-let currentTeacherId = null;
 let currentSubjectId = null;
-let currentStudentId = null;
+let selectedStudentId = null;
 let currentTopicId = null;
+
+let teacherSubTab = "active";
+let studentSubTab = "pending";
 
 /* LOGOWANIE */
 async function handleLogin(e) {
   e.preventDefault();
-  const u = document.getElementById("logUser").value.trim();
-  const p = document.getElementById("logPass").value.trim();
+  const u = document.getElementById("loginUsername").value.trim();
+  const p = document.getElementById("loginPassword").value.trim();
 
   const { data, error } = await db.from('users').select('*').eq('login', u).eq('password', p).single();
   if (error || !data) return alert("Błędny login lub hasło!");
 
   currentUser = data;
-  document.getElementById("loginView").style.display = "none";
-  document.getElementById("headerAuth").style.display = "flex";
-  document.getElementById("userNameBadge").textContent = `${data.name} (${data.role})`;
+  document.getElementById("loginSection").style.display = "none";
+  document.getElementById("appSection").style.display = "block";
+  document.getElementById("headerUserInfo").style.display = "flex";
+  document.getElementById("loggedUserLabel").textContent = `Zalogowano: ${data.name} (${data.role})`;
 
   if (data.role === 'superadmin') {
     document.getElementById("superadminView").style.display = "block";
     loadSuperadmin();
   } else if (data.role === 'teacher') {
     document.getElementById("teacherView").style.display = "block";
-    currentTeacherId = data.id;
     loadTeacherSubjects();
   } else if (data.role === 'student') {
     document.getElementById("studentView").style.display = "block";
-    document.getElementById("stuGreeting").textContent = `Cześć, ${data.name}!`;
-    loadStudentTopics();
+    document.getElementById("studentWelcome").textContent = `Cześć, ${data.name}!`;
+    loadStudentSubjects();
   }
 }
 
 function logout() { location.reload(); }
 
-/* SUPERADMIN LOGIC */
+/* SUPERADMIN */
 async function loadSuperadmin() {
   const { data: teachers } = await db.from('users').select('*').eq('role', 'teacher');
   const tbody = document.querySelector("#teachersTable tbody");
@@ -254,6 +477,8 @@ async function saveTeacher() {
   const login = document.getElementById("tmLogin").value.trim();
   const password = document.getElementById("tmPass").value.trim();
 
+  if (!name || !login || !password) return alert("Wypełnij wszystkie pola!");
+
   if (id) {
     await db.from('users').update({ name, login, password }).eq('id', id);
   } else {
@@ -270,203 +495,765 @@ async function deleteTeacher(id) {
   }
 }
 
-/* KOREPETYTOR LOGIC */
+/* PRZEDMIOTY */
 async function loadTeacherSubjects() {
-  const { data } = await db.from('subjects').select('*').eq('teacher_id', currentTeacherId);
-  const sel = document.getElementById("teacherSubSel");
+  const { data } = await db.from('subjects').select('*').eq('teacher_id', currentUser.id);
+  const sel = document.getElementById("teacherSubjectSelect");
   sel.innerHTML = (data || []).map(s => `<option value="${s.id}">${s.name}</option>`).join("");
   if (data && data.length > 0) {
     currentSubjectId = data[0].id;
-    loadTeacherStudents();
-  }
-}
-
-async function addSubjectPrompt() {
-  const name = prompt("Nazwa przedmiotu (np. Matematyka):");
-  if (!name) return;
-  const { data } = await db.from('subjects').insert([{ teacher_id: currentTeacherId, name }]).select().single();
-  loadTeacherSubjects();
-}
-
-async function loadTeacherStudents() {
-  currentSubjectId = document.getElementById("teacherSubSel").value;
-  const { data } = await db.from('users').select('*').eq('teacher_id', currentTeacherId);
-  const sel = document.getElementById("teacherStuSel");
-  sel.innerHTML = (data || []).map(s => `<option value="${s.id}">${s.name} (${s.login})</option>`).join("");
-  if (data && data.length > 0) {
-    currentStudentId = data[0].id;
-    loadTeacherTopics();
   } else {
-    document.getElementById("topicsGrid").innerHTML = "<p style='color:var(--muted)'>Brak uczniów. Dodaj pierwszego ucznia.</p>";
+    currentSubjectId = null;
   }
-}
-
-async function openAddStudentModal() {
-  const name = prompt("Imię i nazwisko ucznia:");
-  const login = prompt("Login ucznia:");
-  const password = prompt("Hasło ucznia:");
-  if (!name || !login || !password) return;
-
-  await db.from('users').insert([{
-    role: 'student', teacher_id: currentTeacherId, subject_id: currentSubjectId, name, login, password
-  }]);
   loadTeacherStudents();
 }
 
-async function manageCurrentStudent() {
-  const { data: st } = await db.from('users').select('*').eq('id', currentStudentId).single();
-  const newName = prompt("Zmień imię i nazwisko:", st.name);
-  const newPass = prompt("Zmień hasło:", st.password);
-  if (newName && newPass) {
-    await db.from('users').update({ name: newName, password: newPass }).eq('id', currentStudentId);
+function openAddSubjectModal() {
+  document.getElementById("newSubjectName").value = "";
+  document.getElementById("addSubjectModal").style.display = "flex";
+}
+function closeAddSubjectModal() { document.getElementById("addSubjectModal").style.display = "none"; }
+
+async function confirmAddSubject() {
+  const name = document.getElementById("newSubjectName").value.trim();
+  if (!name) return alert("Podaj nazwę przedmiotu!");
+  const { data } = await db.from('subjects').insert([{ teacher_id: currentUser.id, name }]).select().single();
+  closeAddSubjectModal();
+  loadTeacherSubjects();
+}
+
+function changeTeacherSubject() {
+  currentSubjectId = document.getElementById("teacherSubjectSelect").value;
+  loadTeacherStudents();
+}
+
+/* UCZNIOWIE NAUCZYCIELA */
+async function loadTeacherStudents() {
+  if (!currentSubjectId) {
+    document.getElementById("teacherStudentSelect").innerHTML = "";
+    document.getElementById("btnManageStudent").style.display = "none";
+    document.getElementById("teacherTopicsGrid").innerHTML = "<p class='muted'>Dodaj najpierw przedmiot.</p>";
+    return;
+  }
+  const { data } = await db.from('users').select('*').eq('teacher_id', currentUser.id).eq('subject_id', currentSubjectId);
+  const sel = document.getElementById("teacherStudentSelect");
+  sel.innerHTML = (data || []).map(s => `<option value="${s.id}">${s.name} (${s.login})</option>`).join("");
+
+  if (data && data.length > 0) {
+    selectedStudentId = data[0].id;
+    document.getElementById("btnManageStudent").style.display = "inline-flex";
+    loadTeacherTopics();
+  } else {
+    selectedStudentId = null;
+    document.getElementById("btnManageStudent").style.display = "none";
+    document.getElementById("teacherTopicsGrid").innerHTML = "<p class='muted'>Brak uczniów w tym przedmiocie. Dodaj ucznia.</p>";
+  }
+}
+
+function changeTeacherStudent() {
+  selectedStudentId = document.getElementById("teacherStudentSelect").value;
+  loadTeacherTopics();
+}
+
+function openAddStudentModal() {
+  if (!currentSubjectId) return alert("Najpierw utwórz przedmiot!");
+  document.getElementById("newStudentName").value = "";
+  document.getElementById("newStudentLogin").value = "";
+  document.getElementById("newStudentPass").value = "";
+  document.getElementById("addStudentModal").style.display = "flex";
+}
+function closeAddStudentModal() { document.getElementById("addStudentModal").style.display = "none"; }
+
+async function confirmAddStudent() {
+  const name = document.getElementById("newStudentName").value.trim();
+  const login = document.getElementById("newStudentLogin").value.trim();
+  const password = document.getElementById("newStudentPass").value.trim();
+
+  if (!name || !login || !password) return alert("Wypełnij wszystkie pola!");
+
+  const { error } = await db.from('users').insert([{
+    role: 'student', teacher_id: currentUser.id, subject_id: currentSubjectId, name, login, password
+  }]);
+  if (error) return alert("Błąd (możliwe, że login jest zajęty): " + error.message);
+
+  closeAddStudentModal();
+  loadTeacherStudents();
+}
+
+async function openManageStudentModal() {
+  const { data: st } = await db.from('users').select('*').eq('id', selectedStudentId).single();
+  if (!st) return;
+  document.getElementById("manageStudentId").value = st.id;
+  document.getElementById("manageStudentName").value = st.name;
+  document.getElementById("manageStudentLogin").value = st.login;
+  document.getElementById("manageStudentPass").value = st.password;
+  document.getElementById("manageStudentModal").style.display = "flex";
+}
+function closeManageStudentModal() { document.getElementById("manageStudentModal").style.display = "none"; }
+
+async function saveStudentChanges() {
+  const id = document.getElementById("manageStudentId").value;
+  const name = document.getElementById("manageStudentName").value.trim();
+  const login = document.getElementById("manageStudentLogin").value.trim();
+  const password = document.getElementById("manageStudentPass").value.trim();
+
+  await db.from('users').update({ name, login, password }).eq('id', id);
+  closeManageStudentModal();
+  loadTeacherStudents();
+}
+
+async function deleteStudent() {
+  const id = document.getElementById("manageStudentId").value;
+  if (confirm("Czy na pewno chcesz usunąć tego ucznia wraz z tematami i zadaniami?")) {
+    await db.from('users').delete().eq('id', id);
+    closeManageStudentModal();
     loadTeacherStudents();
   }
 }
 
-async function loadTeacherTopics() {
-  currentStudentId = document.getElementById("teacherStuSel").value;
-  const { data: topics } = await db.from('topics').select('*').eq('student_id', currentStudentId);
-  const grid = document.getElementById("topicsGrid");
-
-  grid.innerHTML = (topics || []).map(top => `
-    <div class="card" style="cursor:pointer; margin:0;" onclick="openTeacherTopic('${top.id}','${top.name}')">
-      <h3 style="color:var(--primary);">${top.name}</h3>
-      <p style="font-size:0.85rem; color:var(--muted); margin-top:0.4rem;">Kliknij, aby zarządzać zadaniami →</p>
-    </div>
-  `).join("");
+/* TEMATY I STATYSTYKI */
+function parseMath(text) {
+  if (!text) return "";
+  if (!window.katex) return text;
+  let res = text.replace(/\$\$([\s\S]*?)\$\$/g, (m, expr) => {
+    try { return katex.renderToString(expr, { displayMode: true }); } catch { return expr; }
+  });
+  res = res.replace(/\$([^$]+?)\$/g, (m, expr) => {
+    try { return katex.renderToString(expr, { displayMode: false }); } catch { return expr; }
+  });
+  return res.replace(/\n/g, "<br>");
 }
 
-async function addTopicPrompt() {
-  const name = prompt("Nazwa tematu lekcji:");
-  if (!name) return;
-  await db.from('topics').insert([{ subject_id: currentSubjectId, student_id: currentStudentId, name }]);
+function renderMediaElement(url, type) {
+  if (!url) return "";
+  if (type && type.startsWith("audio/")) return `<audio controls src="${url}" style="width:100%; margin-top:0.5rem;"></audio>`;
+  if (type && type.startsWith("video/")) return `<video controls src="${url}" class="media-preview" style="max-height:380px;"></video>`;
+  return `<img src="${url}" class="media-preview" style="max-height:350px;">`;
+}
+
+async function loadTeacherTopics() {
+  if (!selectedStudentId) return;
+  const { data: topList } = await db.from('topics').select('*').eq('student_id', selectedStudentId).eq('subject_id', currentSubjectId);
+  const grid = document.getElementById("teacherTopicsGrid");
+
+  if (!topList || topList.length === 0) {
+    grid.innerHTML = "<p class='muted' style='grid-column:1/-1;'>Brak tematów dla tego ucznia. Dodaj temat powyżej!</p>";
+    return;
+  }
+
+  let html = "";
+  for (let top of topList) {
+    const { data: tTasks } = await db.from('tasks').select('status, archived').eq('topic_id', top.id);
+    const archived = (tTasks || []).filter(t => t.archived).length;
+    const submitted = (tTasks || []).filter(t => !t.archived && t.status === 'submitted').length;
+    const pending = (tTasks || []).filter(t => !t.archived && (t.status === 'pending' || t.status === 'correction')).length;
+
+    html += `
+      <div class="topic-card" onclick="openTeacherTopic('${top.id}', '${top.name}')">
+        <h3 style="color:var(--primary);">${top.name}</h3>
+        <div class="topic-stats">
+          <div class="stat-row"><span>⏳ Do zrobienia / Poprawka:</span><span class="badge badge-pending">${pending}</span></div>
+          <div class="stat-row"><span>🟢 Wysłane przez ucznia:</span><span class="badge badge-done">${submitted}</span></div>
+          <div class="stat-row"><span>📦 Zarchiwizowane:</span><span class="badge badge-archived">${archived}</span></div>
+        </div>
+      </div>
+    `;
+  }
+  grid.innerHTML = html;
+}
+
+async function addNewTopic() {
+  const name = document.getElementById("newTopicName").value.trim();
+  if (!name) return alert("Wpisz nazwę tematu!");
+  if (!selectedStudentId) return alert("Wybierz ucznia!");
+
+  await db.from('topics').insert([{ subject_id: currentSubjectId, student_id: selectedStudentId, name }]);
+  document.getElementById("newTopicName").value = "";
   loadTeacherTopics();
 }
 
-function openTeacherTopic(id, name) {
-  currentTopicId = id;
-  document.getElementById("currentTopicTitle").textContent = "Temat: " + name;
-  document.getElementById("teacherTopicList").style.display = "none";
-  document.getElementById("teacherTasksWrap").style.display = "block";
+function openTeacherTopic(topicId, topicName) {
+  currentTopicId = topicId;
+  document.getElementById("teacherCurrentTopicBreadcrumb").textContent = topicName;
+  document.getElementById("teacherTopicsView").style.display = "none";
+  document.getElementById("teacherTasksView").style.display = "block";
   loadTeacherTasks();
 }
 
 function backToTopicsTeacher() {
-  document.getElementById("teacherTopicList").style.display = "block";
-  document.getElementById("teacherTasksWrap").style.display = "none";
+  currentTopicId = null;
+  document.getElementById("teacherTopicsView").style.display = "block";
+  document.getElementById("teacherTasksView").style.display = "none";
   loadTeacherTopics();
 }
 
-async function createTask() {
-  const title = document.getElementById("tTitle").value.trim();
-  const content = document.getElementById("tContent").value.trim();
-  if (!title || !content) return alert("Uzupełnij pola!");
-
-  await db.from('tasks').insert([{
-    subject_id: currentSubjectId, student_id: currentStudentId, topic_id: currentTopicId, title, content
-  }]);
-  document.getElementById("tTitle").value = "";
-  document.getElementById("tContent").value = "";
+function switchTeacherTaskTab(tab, btn) {
+  teacherSubTab = tab;
+  document.querySelectorAll("#teacherTasksView .tab-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
   loadTeacherTasks();
 }
 
 async function loadTeacherTasks() {
-  const { data: tasks } = await db.from('tasks').select('*').eq('topic_id', currentTopicId);
-  const cont = document.getElementById("teacherTasksContainer");
+  const { data: tasksList } = await db.from('tasks').select('*').eq('topic_id', currentTopicId);
+  const list = document.getElementById("teacherTaskList");
 
-  cont.innerHTML = (tasks || []).map(t => `
-    <div class="card" style="border-left: 5px solid ${t.status === 'submitted' ? 'var(--success)' : '#cbd5e1'};">
-      <div style="display:flex; justify-content:space-between;">
-        <h4>${t.title}</h4>
-        <span class="badge">${t.status}</span>
+  const shown = teacherSubTab === "active" 
+    ? (tasksList || []).filter(t => !t.archived) 
+    : (tasksList || []).filter(t => t.archived);
+
+  if (shown.length === 0) {
+    list.innerHTML = `<p class="muted">Brak zadań w tej sekcji.</p>`;
+    return;
+  }
+
+  list.innerHTML = shown.map(task => {
+    const isSubmitted = task.status === "submitted";
+    const isCorrection = task.status === "correction";
+
+    let badgeHtml = '<span class="badge badge-pending">○ Oczekuje</span>';
+    if (isSubmitted) badgeHtml = '<span class="badge badge-done">● Uczeń odesłał</span>';
+    if (isCorrection) badgeHtml = '<span class="badge badge-correction">⚠️ Zwrócono do poprawki</span>';
+
+    return `
+      <div class="task-item ${isSubmitted ? 'submitted' : ''} ${isCorrection ? 'correction' : ''}">
+        <div class="task-header">
+          <div>
+            ${badgeHtml}
+            ${task.archived ? '<span class="badge badge-archived">Zarchiwizowane</span>' : ''}
+            <h3 style="margin-top:0.4rem;">${task.title}</h3>
+          </div>
+          <div style="display:flex; gap:0.4rem;">
+            <button class="btn btn-secondary" onclick="editTask('${task.id}')">Edytuj</button>
+            <button class="btn btn-secondary" onclick="toggleArchiveTask('${task.id}', ${!task.archived})">
+              ${task.archived ? 'Przywróć' : '📦 Archiwizuj'}
+            </button>
+            <button class="btn btn-danger" onclick="deleteTask('${task.id}')">Usuń</button>
+          </div>
+        </div>
+
+        <div class="task-body">
+          ${parseMath(task.content)}
+          ${renderMediaElement(task.media_url, task.media_type)}
+        </div>
+
+        ${(task.answer_text || task.answer_drawing) ? `
+          <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:1rem; margin:1rem 0;">
+            <h4 style="margin-bottom:0.5rem;">Rozwiązanie ucznia:</h4>
+            ${task.answer_text ? `<div style="margin-bottom:0.8rem; background:white; padding:0.6rem; border-radius:6px; border:1px solid #e2e8f0;"><strong>Tekst / komentarz:</strong><br>${parseMath(task.answer_text)}</div>` : ''}
+            ${task.answer_drawing ? `<img src="${task.answer_drawing}" style="max-width:100%; border:1px solid #cbd5e1; border-radius:6px; background:white; display:block;">` : ''}
+          </div>
+        ` : ''}
+
+        <div style="background: #f1f5f9; padding: 0.8rem; border-radius: 8px; margin-top: 0.8rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom: 0.6rem;">
+            <label style="font-weight:700; font-size:0.85rem;">Ocena odpowiedzi:</label>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-success" onclick="gradeTask('${task.id}', true)">✅ Dobrze (Do archiwum)</button>
+              <button class="btn btn-danger" onclick="gradeTask('${task.id}', false)">❌ Źle (Do poprawki)</button>
+            </div>
+          </div>
+          <div style="display:flex; gap:0.5rem;">
+            <input type="text" id="feedback_${task.id}" value="${task.feedback || ''}" placeholder="Wpisz uwagi / wskazówki...">
+            <button class="btn btn-secondary" style="height:38px;" onclick="saveFeedback('${task.id}')">Wyślij uwagę</button>
+          </div>
+        </div>
       </div>
-      <p style="margin: 0.5rem 0;">${t.content}</p>
-      ${t.answer_drawing ? `<img src="${t.answer_drawing}" style="max-width:100%; border:1px solid #ddd; border-radius:6px; margin-top:0.5rem;">` : ''}
-      <div style="margin-top:1rem; display:flex; gap:0.5rem;">
-        <button class="btn btn-success" onclick="gradeTask('${t.id}', true)">Dobrze (Archiwum)</button>
-        <button class="btn btn-danger" onclick="gradeTask('${t.id}', false)">Do poprawki</button>
-      </div>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 }
 
-async function gradeTask(id, ok) {
-  await db.from('tasks').update({ status: ok ? 'approved' : 'correction', archived: ok }).eq('id', id);
+async function gradeTask(id, isGood) {
+  const feedbackInput = document.getElementById(`feedback_${id}`);
+  const feedback = feedbackInput ? feedbackInput.value : "";
+
+  if (isGood) {
+    await db.from('tasks').update({ archived: true, status: 'submitted', feedback }).eq('id', id);
+    alert("Zadanie zaakceptowane i przeniesione do archiwum!");
+  } else {
+    await db.from('tasks').update({ archived: false, status: 'correction', feedback }).eq('id', id);
+    alert("Zadanie oznaczono do poprawki.");
+  }
   loadTeacherTasks();
 }
 
-/* UCZEŃ LOGIC */
-async function loadStudentTopics() {
-  const { data: topics } = await db.from('topics').select('*').eq('student_id', currentUser.id);
-  const grid = document.getElementById("stuTopicsGrid");
-  grid.innerHTML = (topics || []).map(t => `
-    <div class="card" style="cursor:pointer; margin:0;" onclick="openStudentTopic('${t.id}')">
-      <h3 style="color:var(--primary);">${t.name}</h3>
-    </div>
-  `).join("");
+async function saveTask() {
+  const id = document.getElementById("editTaskId").value;
+  const title = document.getElementById("taskTitle").value.trim();
+  const content = document.getElementById("taskContent").value.trim();
+  const fileInput = document.getElementById("taskMediaInput");
+
+  if (!title || !content) return alert("Wypełnij tytuł i treść zadania!");
+
+  let media_url = document.getElementById("editMediaUrl").value || null;
+  let media_type = document.getElementById("editMediaType").value || null;
+
+  if (fileInput.files && fileInput.files[0]) {
+    const file = fileInput.files[0];
+    const fileName = `media_${Date.now()}_${file.name}`;
+    await db.storage.from('uploads').upload(fileName, file);
+    const { data: { publicUrl } } = db.storage.from('uploads').getPublicUrl(fileName);
+    media_url = publicUrl;
+    media_type = file.type;
+  }
+
+  if (id) {
+    await db.from('tasks').update({ title, content, media_url, media_type }).eq('id', id);
+  } else {
+    await db.from('tasks').insert([{
+      subject_id: currentSubjectId,
+      student_id: selectedStudentId,
+      topic_id: currentTopicId,
+      title,
+      content,
+      status: "pending",
+      archived: false,
+      media_url,
+      media_type
+    }]);
+  }
+
+  resetTaskForm();
+  loadTeacherTasks();
 }
 
-function openStudentTopic(id) {
-  currentTopicId = id;
-  document.getElementById("stuTopicsCard").style.display = "none";
-  document.getElementById("stuTasksCard").style.display = "block";
+async function editTask(id) {
+  const { data: t } = await db.from('tasks').select('*').eq('id', id).single();
+  if (!t) return;
+  document.getElementById("editTaskId").value = t.id;
+  document.getElementById("taskTitle").value = t.title;
+  document.getElementById("taskContent").value = t.content;
+  document.getElementById("editMediaUrl").value = t.media_url || "";
+  document.getElementById("editMediaType").value = t.media_type || "";
+  document.getElementById("mediaEditPreview").innerHTML = renderMediaElement(t.media_url, t.media_type);
+
+  document.getElementById("formTitle").textContent = "✏️ Edytuj zadanie";
+  document.getElementById("cancelEditBtn").style.display = "inline-block";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function resetTaskForm() {
+  document.getElementById("editTaskId").value = "";
+  document.getElementById("taskTitle").value = "";
+  document.getElementById("taskContent").value = "";
+  document.getElementById("taskMediaInput").value = "";
+  document.getElementById("editMediaUrl").value = "";
+  document.getElementById("editMediaType").value = "";
+  document.getElementById("mediaEditPreview").innerHTML = "";
+  document.getElementById("formTitle").textContent = "➕ Dodaj zadanie domowe";
+  document.getElementById("cancelEditBtn").style.display = "none";
+}
+
+async function toggleArchiveTask(id, newState) {
+  await db.from('tasks').update({ archived: newState }).eq('id', id);
+  loadTeacherTasks();
+}
+
+async function deleteTask(id) {
+  if (confirm("Usunąć trwale to zadanie?")) {
+    await db.from('tasks').delete().eq('id', id);
+    loadTeacherTasks();
+  }
+}
+
+async function saveFeedback(id) {
+  const val = document.getElementById(`feedback_${id}`).value;
+  await db.from('tasks').update({ feedback: val }).eq('id', id);
+  alert("Uwagi zostały zapisane!");
+}
+
+/* UCZEŃ LOGIKA */
+async function loadStudentSubjects() {
+  const { data } = await db.from('subjects').select('*').eq('id', currentUser.subject_id);
+  const sel = document.getElementById("studentSubjectSelect");
+  sel.innerHTML = (data || []).map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+  currentSubjectId = currentUser.subject_id;
+  loadStudentTopics();
+}
+
+function changeStudentSubject() {
+  currentSubjectId = document.getElementById("studentSubjectSelect").value;
+  backToTopicsStudent();
+}
+
+async function loadStudentTopics() {
+  const { data: topList } = await db.from('topics').select('*').eq('student_id', currentUser.id).eq('subject_id', currentSubjectId);
+  const grid = document.getElementById("studentTopicsGrid");
+
+  if (!topList || topList.length === 0) {
+    grid.innerHTML = "<p class='muted'>Nie masz jeszcze tematów lekcji w tym przedmiocie.</p>";
+    return;
+  }
+
+  let html = "";
+  for (let top of topList) {
+    const { data: tTasks } = await db.from('tasks').select('status, archived').eq('topic_id', top.id);
+    const archived = (tTasks || []).filter(t => t.archived).length;
+    const submitted = (tTasks || []).filter(t => !t.archived && t.status === 'submitted').length;
+    const pending = (tTasks || []).filter(t => !t.archived && (t.status === 'pending' || t.status === 'correction')).length;
+
+    html += `
+      <div class="topic-card" onclick="openStudentTopic('${top.id}', '${top.name}')">
+        <h3 style="color:var(--primary);">${top.name}</h3>
+        <div class="topic-stats">
+          <div class="stat-row"><span>📝 Do zrobienia / Poprawka:</span><span class="badge badge-pending">${pending}</span></div>
+          <div class="stat-row"><span>🟢 Oddane:</span><span class="badge badge-done">${submitted}</span></div>
+          <div class="stat-row"><span>📦 Archiwum:</span><span class="badge badge-archived">${archived}</span></div>
+        </div>
+      </div>
+    `;
+  }
+  grid.innerHTML = html;
+}
+
+function openStudentTopic(topicId, topicName) {
+  currentTopicId = topicId;
+  document.getElementById("studentCurrentTopicBreadcrumb").textContent = topicName;
+  document.getElementById("studentTopicsView").style.display = "none";
+  document.getElementById("studentTasksView").style.display = "block";
   loadStudentTasks();
 }
 
 function backToTopicsStudent() {
-  document.getElementById("stuTopicsCard").style.display = "block";
-  document.getElementById("stuTasksCard").style.display = "none";
+  currentTopicId = null;
+  document.getElementById("studentTopicsView").style.display = "block";
+  document.getElementById("studentTasksView").style.display = "none";
+  loadStudentTopics();
+}
+
+function switchStudentTaskTab(tab, btn) {
+  studentSubTab = tab;
+  document.querySelectorAll("#studentTasksView .tab-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  loadStudentTasks();
 }
 
 async function loadStudentTasks() {
-  const { data: tasks } = await db.from('tasks').select('*').eq('topic_id', currentTopicId);
-  const cont = document.getElementById("stuTasksContainer");
+  const { data: tasksList } = await db.from('tasks').select('*').eq('topic_id', currentTopicId);
+  const list = document.getElementById("studentTaskList");
 
-  cont.innerHTML = (tasks || []).map(t => `
-    <div class="card">
-      <h3>${t.title}</h3>
-      <p style="margin: 0.6rem 0;">${t.content}</p>
-      <div class="paint-box">
-        <div class="board-viewport" id="vp_${t.id}">
-          <canvas id="can_${t.id}" width="2400" height="1600" style="position:absolute; left:0; top:0;"></canvas>
+  const pendingList = (tasksList || []).filter(t => !t.archived);
+  const doneList = (tasksList || []).filter(t => t.archived);
+
+  document.getElementById("countStudentPending").textContent = pendingList.length;
+  document.getElementById("countStudentDone").textContent = doneList.length;
+
+  const currentList = studentSubTab === "pending" ? pendingList : doneList;
+
+  if (currentList.length === 0) {
+    list.innerHTML = `<div class="card"><p class="muted">Brak zadań w tej sekcji.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = currentList.map(task => {
+    const isCorrection = task.status === "correction";
+    const isSubmitted = task.status === "submitted";
+
+    return `
+      <div class="task-item ${isSubmitted ? 'submitted' : ''} ${isCorrection ? 'correction' : ''}">
+        <div class="task-header">
+          <h3>${task.title}</h3>
+          <div>
+            ${isCorrection ? '<span class="badge badge-correction">⚠️ Zwrócono do poprawki</span>' : ''}
+            ${isSubmitted ? '<span class="badge badge-done">Oddane</span>' : ''}
+            ${task.status === 'pending' ? '<span class="badge badge-pending">Do zrobienia</span>' : ''}
+            ${task.archived ? '<span class="badge badge-archived">W archiwum</span>' : ''}
+          </div>
         </div>
-        <div style="padding:0.6rem; text-align:right;">
-          <button class="btn btn-success" onclick="submitWork('${t.id}')">Wyślij rozwiązanie</button>
+
+        <div class="task-body">
+          ${parseMath(task.content)}
+          ${renderMediaElement(task.media_url, task.media_type)}
+        </div>
+
+        ${task.feedback ? `
+          <div class="feedback-box ${isCorrection ? 'error-lead' : ''}">
+            <strong>${isCorrection ? '⚠️ Uwagi do poprawki:' : '💬 Uwagi nauczyciela:'}</strong><br>${parseMath(task.feedback)}
+          </div>
+        ` : ''}
+
+        <div style="margin-top:1.2rem; border-top:1px solid var(--border); padding-top:1rem;">
+          <h4 style="margin-bottom:0.4rem;">Twoje rozwiązanie:</h4>
+          
+          <label style="font-size:0.85rem; font-weight:600;">Odpowiedź tekstowa (opcjonalnie):</label>
+          <textarea id="ansText_${task.id}" placeholder="Wpisz komentarz lub obliczenia...">${task.answer_text || ''}</textarea>
+
+          <label style="font-size:0.85rem; font-weight:600;">
+            Tablica obliczeń (jak na Miro — przesuwaj, przybliżaj i pisz):
+          </label>
+
+          <div class="paint-box" id="paintbox_${task.id}">
+            <div class="paint-toolbar" id="toolbar_${task.id}">
+              <button class="tool-btn active" onclick="setBoardTool('${task.id}', 'brush', this)">✏️ Pędzel</button>
+              <button class="tool-btn" onclick="setBoardTool('${task.id}', 'pan', this)">✋ Przesuń (Rączka)</button>
+              <button class="tool-btn" onclick="setBoardTool('${task.id}', 'line', this)">📏 Linia</button>
+              <button class="tool-btn" onclick="setBoardTool('${task.id}', 'rect', this)">▭ Prostokąt</button>
+              <button class="tool-btn" onclick="setBoardTool('${task.id}', 'circle', this)">⭕ Okrąg</button>
+              <button class="tool-btn" onclick="setBoardTool('${task.id}', 'eraser', this)">🧽 Gumka</button>
+              
+              <label style="display:flex; align-items:center; gap:3px; margin-left:6px;">
+                Kolor: <input type="color" id="color_${task.id}" value="#0f172a" style="width:28px; height:24px; padding:0; margin:0; cursor:pointer;">
+              </label>
+
+              <label style="display:flex; align-items:center; gap:3px;">
+                Grubość: <input type="range" id="size_${task.id}" min="1" max="25" value="3" style="width:50px; margin:0;">
+              </label>
+
+              <div style="display:flex; gap:3px; margin-left:auto; align-items:center;">
+                <button class="tool-btn" onclick="zoomBoard('${task.id}', -0.15)">🔍 -</button>
+                <span id="zoomLabel_${task.id}" style="font-size:0.8rem; min-width:35px; text-align:center;">100%</span>
+                <button class="tool-btn" onclick="zoomBoard('${task.id}', 0.15)">🔍 +</button>
+                <button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.8rem;" onclick="resetBoardTransform('${task.id}')">🎯 1:1</button>
+                <button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.8rem;" onclick="toggleFullscreen('${task.id}')">⛶ Pełny ekran</button>
+                <button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.8rem;" onclick="clearBoard('${task.id}')">🗑️ Wyczyść</button>
+              </div>
+            </div>
+            
+            <div class="board-viewport" id="viewport_${task.id}">
+              <canvas id="canvas_${task.id}" width="3000" height="2000" style="position: absolute; left: 0px; top: 0px; transform-origin: 0 0;"></canvas>
+            </div>
+            
+            <div style="padding:0.6rem; text-align:right; background:#f8fafc; border-top:1px solid var(--border);">
+              <button class="btn btn-success" onclick="submitStudentWork('${task.id}')">
+                ${isCorrection ? 'Wyślij poprawione zadanie' : 'Zatwierdź i wyślij rozwiązanie'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 
   setTimeout(() => {
-    (tasks || []).forEach(t => initCanvas(t.id));
-  }, 100);
+    currentList.forEach(task => setupBoardEngine(task));
+  }, 60);
 }
 
-function initCanvas(id) {
-  const c = document.getElementById(`can_${id}`);
-  if (!c) return;
-  const ctx = c.getContext("2d");
-  ctx.lineWidth = 3;
+/* SILNIK TABLICY MIRO */
+const boardRegistry = {};
+
+function setupBoardEngine(task) {
+  const id = task.id;
+  const canvas = document.getElementById(`canvas_${id}`);
+  const viewport = document.getElementById(`viewport_${id}`);
+  if (!canvas || !viewport) return;
+
+  const ctx = canvas.getContext("2d");
   ctx.lineCap = "round";
-  let draw = false;
+  ctx.lineJoin = "round";
 
-  c.addEventListener("mousedown", e => { draw = true; ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); });
-  c.addEventListener("mousemove", e => { if (draw) { ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); } });
-  window.addEventListener("mouseup", () => draw = false);
+  if (task.answer_drawing) {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => ctx.drawImage(img, 0, 0);
+    img.src = task.answer_drawing;
+  }
+
+  const engine = {
+    canvas,
+    ctx,
+    viewport,
+    tool: 'brush',
+    isActing: false,
+    startX: 0,
+    startY: 0,
+    canvasStartX: 0,
+    canvasStartY: 0,
+    panX: 0,
+    panY: 0,
+    scale: 1,
+    snapshot: null
+  };
+
+  function updateTransform() {
+    canvas.style.transform = `translate(${engine.panX}px, ${engine.panY}px) scale(${engine.scale})`;
+    const lbl = document.getElementById(`zoomLabel_${id}`);
+    if (lbl) lbl.textContent = `${Math.round(engine.scale * 100)}%`;
+  }
+
+  function getCanvasCoords(clientX, clientY) {
+    const vRect = viewport.getBoundingClientRect();
+    const vx = clientX - vRect.left;
+    const vy = clientY - vRect.top;
+    return {
+      x: (vx - engine.panX) / engine.scale,
+      y: (vy - engine.panY) / engine.scale
+    };
+  }
+
+  function start(e) {
+    engine.isActing = true;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    engine.startX = clientX;
+    engine.startY = clientY;
+
+    if (engine.tool === 'pan') {
+      engine.canvasStartX = engine.panX;
+      engine.canvasStartY = engine.panY;
+      return;
+    }
+
+    const p = getCanvasCoords(clientX, clientY);
+    engine.snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    if (engine.tool === 'brush' || engine.tool === 'eraser') {
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+    }
+  }
+
+  function move(e) {
+    if (!engine.isActing) return;
+    e.preventDefault();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    if (engine.tool === 'pan') {
+      engine.panX = engine.canvasStartX + (clientX - engine.startX);
+      engine.panY = engine.canvasStartY + (clientY - engine.startY);
+      updateTransform();
+      return;
+    }
+
+    const p = getCanvasCoords(clientX, clientY);
+    const startP = getCanvasCoords(engine.startX, engine.startY);
+    const color = document.getElementById(`color_${id}`).value;
+    const size = Number(document.getElementById(`size_${id}`).value);
+
+    ctx.lineWidth = size / engine.scale;
+
+    if (engine.tool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    } else if (engine.tool === 'brush') {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = color;
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.putImageData(engine.snapshot, 0, 0);
+      ctx.strokeStyle = color;
+
+      if (engine.tool === 'line') {
+        ctx.beginPath();
+        ctx.moveTo(startP.x, startP.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      } else if (engine.tool === 'rect') {
+        ctx.strokeRect(startP.x, startP.y, p.x - startP.x, p.y - startP.y);
+      } else if (engine.tool === 'circle') {
+        const radius = Math.sqrt(Math.pow(p.x - startP.x, 2) + Math.pow(p.y - startP.y, 2));
+        ctx.beginPath();
+        ctx.arc(startP.x, startP.y, radius, 0, 2 * Math.PI);
+        ctx.stroke();
+      }
+    }
+  }
+
+  function stop() {
+    if (engine.isActing) {
+      engine.isActing = false;
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+
+  function onWheel(e) {
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 0.1 : -0.1;
+    zoomBoard(id, delta);
+  }
+
+  viewport.addEventListener("mousedown", start);
+  window.addEventListener("mousemove", move);
+  window.addEventListener("mouseup", stop);
+
+  viewport.addEventListener("touchstart", start, { passive: false });
+  window.addEventListener("touchmove", move, { passive: false });
+  window.addEventListener("touchend", stop);
+  viewport.addEventListener("wheel", onWheel, { passive: false });
+
+  engine.updateTransform = updateTransform;
+  boardRegistry[id] = engine;
 }
 
-async function submitWork(taskId) {
-  const c = document.getElementById(`can_${taskId}`);
-  c.toBlob(async blob => {
-    const fileName = `answer_${taskId}_${Date.now()}.png`;
-    // Wysyłamy plik do chmury Supabase Storage
+function setBoardTool(taskId, toolName, btn) {
+  const engine = boardRegistry[taskId];
+  if (!engine) return;
+  engine.tool = toolName;
+
+  const viewport = document.getElementById(`viewport_${taskId}`);
+  viewport.classList.toggle("pan-mode", toolName === 'pan');
+
+  const toolbar = document.getElementById(`toolbar_${taskId}`);
+  toolbar.querySelectorAll(".tool-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+function zoomBoard(taskId, delta) {
+  const engine = boardRegistry[taskId];
+  if (!engine) return;
+  engine.scale = Math.min(Math.max(0.3, engine.scale + delta), 3.0);
+  engine.updateTransform();
+}
+
+function resetBoardTransform(taskId) {
+  const engine = boardRegistry[taskId];
+  if (!engine) return;
+  engine.panX = 0;
+  engine.panY = 0;
+  engine.scale = 1;
+  engine.updateTransform();
+}
+
+function toggleFullscreen(taskId) {
+  const box = document.getElementById(`paintbox_${taskId}`);
+  box.classList.toggle("fullscreen");
+}
+
+function clearBoard(taskId) {
+  const engine = boardRegistry[taskId];
+  if (engine) {
+    engine.ctx.clearRect(0, 0, engine.canvas.width, engine.canvas.height);
+  }
+}
+
+async function submitStudentWork(id) {
+  const engine = boardRegistry[id];
+  const ansText = document.getElementById(`ansText_${id}`).value.trim();
+
+  let hasDrawing = false;
+  if (engine) {
+    const pixelBuffer = new Uint32Array(
+      engine.ctx.getImageData(0, 0, engine.canvas.width, engine.canvas.height).data.buffer
+    );
+    hasDrawing = pixelBuffer.some(color => color !== 0);
+  }
+
+  if (!ansText && !hasDrawing) {
+    return alert("Wprowadź tekst odpowiedzi lub narysuj rozwiązanie!");
+  }
+
+  let answer_drawing = null;
+  if (hasDrawing && engine) {
+    const blob = await new Promise(res => engine.canvas.toBlob(res, 'image/png'));
+    const fileName = `ans_${id}_${Date.now()}.png`;
     await db.storage.from('uploads').upload(fileName, blob);
     const { data: { publicUrl } } = db.storage.from('uploads').getPublicUrl(fileName);
+    answer_drawing = publicUrl;
+  }
 
-    // Zapisujemy link w bazie
-    await db.from('tasks').update({ answer_drawing: publicUrl, status: 'submitted' }).eq('id', taskId);
-    alert("Wysłano zadanie do sprawdzenia!");
-  });
+  await db.from('tasks').update({
+    answer_text: ansText,
+    answer_drawing: answer_drawing,
+    status: 'submitted'
+  }).eq('id', id);
+
+  alert("Rozwiązanie zostało przesłane do korepetytora!");
+  loadStudentTasks();
 }
 </script>
 </body>
