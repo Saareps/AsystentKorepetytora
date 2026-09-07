@@ -3,12 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>System Korepetycji — Panel Zadań</title>
+  <title>System Korepetycji</title>
   
-  <!-- KaTeX -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
-  <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -89,14 +87,14 @@
     }
     textarea { min-height: 80px; resize: vertical; }
 
-    /* Miro / Board Canvas Container */
+    /* MIRO BOARD & CANVAS */
     .paint-box { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; margin-top: 1rem; position: relative; }
     .paint-box.fullscreen {
-      position: fixed; inset: 0; z-index: 9999; border-radius: 0; margin: 0; display: flex; flex-direction: column;
+      position: fixed; inset: 0; z-index: 9999; border-radius: 0; margin: 0; display: flex; flex-direction: column; height: 100vh; width: 100vw;
     }
     .paint-toolbar {
       background: #f8fafc; padding: 0.6rem; display: flex; gap: 0.5rem; align-items: center;
-      border-bottom: 1px solid var(--border); flex-wrap: wrap; font-size: 0.85rem;
+      border-bottom: 1px solid var(--border); flex-wrap: wrap; font-size: 0.85rem; z-index: 10;
     }
     .tool-btn {
       padding: 0.35rem 0.65rem; border: 1px solid var(--border); border-radius: 4px;
@@ -105,14 +103,22 @@
     .tool-btn.active { background: #e0e7ff; border-color: #6366f1; color: #4338ca; font-weight: 700; }
 
     .board-viewport {
-      width: 100%; height: 520px; overflow: hidden; position: relative;
-      background-color: #fcfcfc;
-      background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
-      background-size: 24px 24px;
+      width: 100%; height: 540px; overflow: hidden; position: relative;
+      background-color: #e2e8f0;
       cursor: crosshair; flex: 1;
     }
     .board-viewport.pan-mode { cursor: grab; }
     .board-viewport.pan-mode:active { cursor: grabbing; }
+
+    /* Płótno z ramką i siatką */
+    .sheet-canvas {
+      position: absolute; left: 0px; top: 0px; transform-origin: 0 0;
+      background-color: #ffffff;
+      background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+      background-size: 24px 24px;
+      border: 3px solid var(--primary);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
 
     .feedback-box {
       background: #fffbeb; border-left: 4px solid var(--warning); padding: 0.8rem;
@@ -123,12 +129,12 @@
     .breadcrumb { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; margin-bottom: 1rem; color: var(--muted); }
     .breadcrumb a { color: var(--primary); text-decoration: none; cursor: pointer; }
 
-    .media-preview { max-width: 100%; border-radius: 6px; margin-top: 0.5rem; }
-    .login-container { max-width: 400px; margin: 4rem auto; }
+    .media-preview { max-width: 100%; border-radius: 6px; margin-top: 0.5rem; display: block; }
+    .login-container { max-width: 400px; margin: 5rem auto; }
     
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6);
-      display: flex; align-items: center; justify-content: center; z-index: 100;
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7);
+      display: flex; align-items: center; justify-content: center; z-index: 10000;
     }
 
     .table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
@@ -138,8 +144,8 @@
 <body>
 
 <header>
-  <div style="font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
-    <span>📐</span> Panel Korepetytora
+  <div id="mainHeaderBrand" style="font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
+    <span>📐</span> <span id="panelTitleText">Panel Korepetytora</span>
   </div>
   <div id="headerUserInfo" style="display:none; align-items: center; gap: 1rem;">
     <span id="loggedUserLabel" style="font-size: 0.9rem;"></span>
@@ -148,36 +154,32 @@
 </header>
 
 <div class="container">
-  <!-- LOGOWANIE -->
+  <!-- LOGOWANIE (CZYSTE, BEZ PODPOWIEDZI HASEŁ) -->
   <div id="loginSection" class="login-container">
     <div class="card">
       <h2 style="text-align:center; margin-bottom: 1.5rem;">Logowanie</h2>
       <form onsubmit="handleLogin(event)">
         <label>Login:</label>
-        <input type="text" id="loginUsername" required placeholder="np. superadmin, korepetytor lub uczen">
+        <input type="text" id="loginUsername" required placeholder="Wpisz swój login">
         
         <label>Hasło:</label>
-        <input type="password" id="loginPassword" required placeholder="••••••••">
+        <input type="password" id="loginPassword" required placeholder="Wpisz swoje hasło">
         
         <button type="submit" class="btn" style="width: 100%; justify-content: center; margin-top: 0.5rem;">Zaloguj się</button>
       </form>
-      <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--muted); background: #f1f5f9; padding: 0.6rem; border-radius: 6px;">
-        Główny Superadmin:<br>
-        Login: <strong>superadmin</strong> | Hasło: <strong>super123</strong>
-      </div>
     </div>
   </div>
 
   <!-- APLIKACJA -->
   <div id="appSection" style="display:none;">
 
-    <!-- 1. WIDOK SUPERADMINA -->
+    <!-- 1. SUPERADMIN -->
     <div id="superadminView" style="display:none;">
       <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <div>
-            <h2>Panel Główny Superadmina</h2>
-            <p class="muted">Zarządzaj wszystkimi korepetytorami, ich uczniami oraz dostępami.</p>
+            <h2>Panel Superadmina</h2>
+            <p class="muted">Zarządzaj kontami korepetytorów i ich bazami.</p>
           </div>
           <button class="btn" onclick="openAddTeacherModal()">➕ Dodaj Korepetytora</button>
         </div>
@@ -187,19 +189,17 @@
         <h3>Lista Korepetytorów</h3>
         <table class="table" id="teachersTable">
           <thead>
-            <tr><th>Imię i Nazwisko</th><th>Login</th><th>Hasło</th><th>Liczba uczniów</th><th>Akcje</th></tr>
+            <tr><th>Imię i Nazwisko</th><th>Login</th><th>Hasło</th><th>Uczniowie</th><th>Akcje</th></tr>
           </thead>
           <tbody></tbody>
         </table>
       </div>
     </div>
     
-    <!-- 2. WIDOK NAUCZYCIELA -->
+    <!-- 2. NAUCZYCIEL -->
     <div id="teacherView" style="display:none;">
-      <!-- Wybór Przedmiotu i Ucznia -->
       <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-          
           <div style="display:flex; align-items:center; gap:0.6rem;">
             <label style="font-weight:700; margin:0;">Przedmiot:</label>
             <select id="teacherSubjectSelect" onchange="changeTeacherSubject()" style="width:auto; margin:0; font-weight:700;"></select>
@@ -210,9 +210,8 @@
             <label style="font-weight:700; margin:0;">Uczeń:</label>
             <select id="teacherStudentSelect" onchange="changeTeacherStudent()" style="width:auto; margin:0; font-weight:600;"></select>
             <button class="btn btn-secondary" style="padding:0.3rem 0.6rem;" onclick="openAddStudentModal()">➕ Dodaj ucznia</button>
-            <button class="btn btn-secondary" style="padding:0.3rem 0.6rem;" onclick="openManageStudentModal()" id="btnManageStudent">⚙️ Zarządzaj uczniem</button>
+            <button class="btn btn-secondary" style="padding:0.3rem 0.6rem;" onclick="openManageStudentModal()" id="btnManageStudent">⚙️ Zarządzaj</button>
           </div>
-
         </div>
       </div>
 
@@ -220,7 +219,7 @@
       <div id="teacherTopicsView">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-            <h3 id="teacherTopicsHeader">Tematy lekcji</h3>
+            <h3>Tematy lekcji</h3>
             <div style="display:flex; gap:0.5rem;">
               <input type="text" id="newTopicName" placeholder="Nazwa nowego tematu..." style="margin:0; width:220px;">
               <button class="btn" onclick="addNewTopic()">Dodaj temat</button>
@@ -248,7 +247,7 @@
           <label>Treść zadania (LaTeX w $...$ lub $$...$$)</label>
           <textarea id="taskContent" placeholder="Wpisz treść..."></textarea>
 
-          <label>Załącznik multimedialny (Obraz, MP3 lub MP4):</label>
+          <label>Załącznik (Obraz, MP3 lub MP4):</label>
           <input type="file" id="taskMediaInput" accept="image/*,audio/mp3,audio/mpeg,video/mp4" style="margin-bottom:0.5rem;">
           <input type="hidden" id="editMediaUrl" value="">
           <input type="hidden" id="editMediaType" value="">
@@ -269,7 +268,7 @@
       </div>
     </div>
 
-    <!-- 3. WIDOK UCZNIA -->
+    <!-- 3. UCZEŃ -->
     <div id="studentView" style="display:none;">
       <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
@@ -312,12 +311,31 @@
   </div>
 </div>
 
-<!-- MODAL: DODAWANIE PRZEDMIOTU -->
+<!-- MODAL PODGLĄDU RYSUNKU DLA NAUCZYCIELA -->
+<div id="imgPreviewModal" class="modal-overlay" style="display:none;">
+  <div class="card" style="max-width: 90vw; max-height: 90vh; width: auto; display: flex; flex-direction: column; overflow: hidden; padding: 1rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem; gap: 1rem;">
+      <h3 style="margin:0;">Podgląd rozwiązania ucznia</h3>
+      <div style="display:flex; gap:0.5rem;">
+        <button class="btn btn-secondary" onclick="zoomModalImg(0.2)">🔍 +</button>
+        <button class="btn btn-secondary" onclick="zoomModalImg(-0.2)">🔍 -</button>
+        <button class="btn btn-secondary" onclick="resetModalImgZoom()">1:1</button>
+        <a id="downloadModalLink" class="btn" download="rozwiazanie.png" target="_blank">⬇️ Pobierz plik</a>
+        <button class="btn btn-danger" onclick="closeImgModal()">Zamknij</button>
+      </div>
+    </div>
+    <div style="overflow: auto; flex:1; background:#cbd5e1; display:flex; align-items:center; justify-content:center; border-radius:8px; padding:10px;">
+      <img id="modalPreviewImg" style="transform-origin: center center; transition: transform 0.15s ease; max-width: 100%; height: auto; display: block; box-shadow: 0 4px 15px rgba(0,0,0,0.2); background: white;">
+    </div>
+  </div>
+</div>
+
+<!-- INNE MODALE -->
 <div id="addSubjectModal" class="modal-overlay" style="display:none;">
   <div class="card" style="max-width: 400px; width: 90%;">
     <h3>➕ Dodaj nowy przedmiot</h3>
     <label>Nazwa przedmiotu:</label>
-    <input type="text" id="newSubjectName" placeholder="np. Matematyka, Język angielski, Fizyka">
+    <input type="text" id="newSubjectName" placeholder="np. Matematyka, Język angielski">
     <div style="display:flex; justify-content: flex-end; gap:0.5rem; margin-top: 1rem;">
       <button class="btn btn-secondary" onclick="closeAddSubjectModal()">Anuluj</button>
       <button class="btn" onclick="confirmAddSubject()">Dodaj przedmiot</button>
@@ -325,19 +343,15 @@
   </div>
 </div>
 
-<!-- MODAL: DODAWANIE UCZNIA -->
 <div id="addStudentModal" class="modal-overlay" style="display:none;">
   <div class="card" style="max-width: 440px; width: 90%;">
     <h3>➕ Dodaj ucznia do tego przedmiotu</h3>
     <label>Imię i nazwisko ucznia:</label>
     <input type="text" id="newStudentName" placeholder="np. Kasia Kowalska">
-
     <label>Login:</label>
     <input type="text" id="newStudentLogin" placeholder="np. kasia">
-
     <label>Hasło:</label>
     <input type="text" id="newStudentPass" placeholder="np. kasia123">
-
     <div style="display:flex; justify-content: flex-end; gap:0.5rem; margin-top: 1rem;">
       <button class="btn btn-secondary" onclick="closeAddStudentModal()">Anuluj</button>
       <button class="btn" onclick="confirmAddStudent()">Zapisz ucznia</button>
@@ -345,21 +359,16 @@
   </div>
 </div>
 
-<!-- MODAL: ZARZĄDZAJ UCZNIEM -->
 <div id="manageStudentModal" class="modal-overlay" style="display:none;">
   <div class="card" style="max-width: 440px; width: 90%;">
     <h3>⚙️ Zarządzaj uczniem</h3>
     <input type="hidden" id="manageStudentId">
-
     <label>Imię i nazwisko:</label>
     <input type="text" id="manageStudentName">
-
     <label>Login:</label>
     <input type="text" id="manageStudentLogin">
-
     <label>Hasło:</label>
     <input type="text" id="manageStudentPass">
-
     <div style="display:flex; justify-content: space-between; align-items:center; margin-top: 1rem;">
       <button class="btn btn-danger" onclick="deleteStudent()">🗑️ Usuń ucznia</button>
       <div style="display:flex; gap:0.5rem;">
@@ -370,7 +379,6 @@
   </div>
 </div>
 
-<!-- MODAL: DODAJ / EDYTUJ KOREPETYTORA (SUPERADMIN) -->
 <div id="teacherModal" class="modal-overlay" style="display:none;">
   <div class="card" style="max-width:400px; width:90%;">
     <h3 id="teacherModalTitle">Korepetytor</h3>
@@ -389,7 +397,6 @@
 </div>
 
 <script>
-/* KONFIGURACJA SUPABASE */
 const SUPABASE_URL = "https://xhfqdzxjgodyozcusthc.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoZnFkenhqZ29keW96Y3VzdGhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3OTQ3MDYsImV4cCI6MjEwNDM3MDcwNn0.xIs6smzq5k6R6epv8MuVEFzgoacdhUpNrkHApMxgTWI";
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -408,22 +415,25 @@ async function handleLogin(e) {
   const u = document.getElementById("loginUsername").value.trim();
   const p = document.getElementById("loginPassword").value.trim();
 
-  const { data, error } = await db.from('users').select('*').eq('login', u).eq('password', p).single();
+  const { data, error } = await db.from('users').select('*').eq('login', u).eq('password', p).maybeSingle();
   if (error || !data) return alert("Błędny login lub hasło!");
 
   currentUser = data;
   document.getElementById("loginSection").style.display = "none";
   document.getElementById("appSection").style.display = "block";
   document.getElementById("headerUserInfo").style.display = "flex";
-  document.getElementById("loggedUserLabel").textContent = `Zalogowano: ${data.name} (${data.role})`;
+  document.getElementById("loggedUserLabel").textContent = `${data.name}`;
 
   if (data.role === 'superadmin') {
+    document.getElementById("panelTitleText").textContent = "Panel Superadmina";
     document.getElementById("superadminView").style.display = "block";
     loadSuperadmin();
   } else if (data.role === 'teacher') {
+    document.getElementById("panelTitleText").textContent = "Panel Korepetytora";
     document.getElementById("teacherView").style.display = "block";
     loadTeacherSubjects();
   } else if (data.role === 'student') {
+    document.getElementById("panelTitleText").textContent = "Panel Ucznia";
     document.getElementById("studentView").style.display = "block";
     document.getElementById("studentWelcome").textContent = `Cześć, ${data.name}!`;
     loadStudentSubjects();
@@ -489,13 +499,13 @@ async function saveTeacher() {
 }
 
 async function deleteTeacher(id) {
-  if (confirm("Usunąć tego korepetytora i wszystkie jego dane?")) {
+  if (confirm("Usunąć tego korepetytora i wszystkie powiązane dane?")) {
     await db.from('users').delete().eq('id', id);
     loadSuperadmin();
   }
 }
 
-/* PRZEDMIOTY */
+/* PRZEDMIOTY (NAUCZYCIEL) */
 async function loadTeacherSubjects() {
   const { data } = await db.from('subjects').select('*').eq('teacher_id', currentUser.id);
   const sel = document.getElementById("teacherSubjectSelect");
@@ -517,7 +527,7 @@ function closeAddSubjectModal() { document.getElementById("addSubjectModal").sty
 async function confirmAddSubject() {
   const name = document.getElementById("newSubjectName").value.trim();
   if (!name) return alert("Podaj nazwę przedmiotu!");
-  const { data } = await db.from('subjects').insert([{ teacher_id: currentUser.id, name }]).select().single();
+  await db.from('subjects').insert([{ teacher_id: currentUser.id, name }]);
   closeAddSubjectModal();
   loadTeacherSubjects();
 }
@@ -527,7 +537,7 @@ function changeTeacherSubject() {
   loadTeacherStudents();
 }
 
-/* UCZNIOWIE NAUCZYCIELA */
+/* UCZNIOWIE (NAUCZYCIEL) */
 async function loadTeacherStudents() {
   if (!currentSubjectId) {
     document.getElementById("teacherStudentSelect").innerHTML = "";
@@ -574,7 +584,7 @@ async function confirmAddStudent() {
   const { error } = await db.from('users').insert([{
     role: 'student', teacher_id: currentUser.id, subject_id: currentSubjectId, name, login, password
   }]);
-  if (error) return alert("Błąd (możliwe, że login jest zajęty): " + error.message);
+  if (error) return alert("Błąd zapisu ucznia: " + error.message);
 
   closeAddStudentModal();
   loadTeacherStudents();
@@ -604,14 +614,14 @@ async function saveStudentChanges() {
 
 async function deleteStudent() {
   const id = document.getElementById("manageStudentId").value;
-  if (confirm("Czy na pewno chcesz usunąć tego ucznia wraz z tematami i zadaniami?")) {
+  if (confirm("Czy na pewno chcesz usunąć tego ucznia wraz z jego tematami i zadaniami?")) {
     await db.from('users').delete().eq('id', id);
     closeManageStudentModal();
     loadTeacherStudents();
   }
 }
 
-/* TEMATY I STATYSTYKI */
+/* TEMATY I ZADANIA */
 function parseMath(text) {
   if (!text) return "";
   if (!window.katex) return text;
@@ -627,7 +637,7 @@ function parseMath(text) {
 function renderMediaElement(url, type) {
   if (!url) return "";
   if (type && type.startsWith("audio/")) return `<audio controls src="${url}" style="width:100%; margin-top:0.5rem;"></audio>`;
-  if (type && type.startsWith("video/")) return `<video controls src="${url}" class="media-preview" style="max-height:380px;"></video>`;
+  if (type && type.startsWith("video/")) return `<video controls src="${url}" class="media-preview" style="max-height:380px; width:100%;"></video>`;
   return `<img src="${url}" class="media-preview" style="max-height:350px;">`;
 }
 
@@ -741,7 +751,17 @@ async function loadTeacherTasks() {
           <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:1rem; margin:1rem 0;">
             <h4 style="margin-bottom:0.5rem;">Rozwiązanie ucznia:</h4>
             ${task.answer_text ? `<div style="margin-bottom:0.8rem; background:white; padding:0.6rem; border-radius:6px; border:1px solid #e2e8f0;"><strong>Tekst / komentarz:</strong><br>${parseMath(task.answer_text)}</div>` : ''}
-            ${task.answer_drawing ? `<img src="${task.answer_drawing}" style="max-width:100%; border:1px solid #cbd5e1; border-radius:6px; background:white; display:block;">` : ''}
+            ${task.answer_drawing ? `
+              <div style="margin-top: 0.5rem;">
+                <div style="margin-bottom: 0.4rem; display: flex; gap: 0.5rem;">
+                  <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="openImgModal('${task.answer_drawing}')">🔍 Powiększ / Przybliż</button>
+                  <a href="${task.answer_drawing}" download="rozwiazanie_${task.id}.png" target="_blank" class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">⬇️ Pobierz JPG</a>
+                </div>
+                <div style="max-height: 500px; overflow: auto; border: 1px solid #cbd5e1; border-radius: 6px; background: #e2e8f0; text-align: center; padding: 5px;">
+                  <img src="${task.answer_drawing}" style="max-width: 100%; height: auto; display: inline-block; cursor: zoom-in; background: white;" onclick="openImgModal('${task.answer_drawing}')">
+                </div>
+              </div>
+            ` : ''}
           </div>
         ` : ''}
 
@@ -788,21 +808,16 @@ async function saveTask() {
   let media_url = document.getElementById("editMediaUrl").value || null;
   let media_type = document.getElementById("editMediaType").value || null;
 
-  // Sprawdzamy, czy wybrano plik (audio, wideo lub obraz)
   if (fileInput.files && fileInput.files[0]) {
     const file = fileInput.files[0];
-    // Usunięcie polskich znaków i spacji z nazwy pliku, aby nie psuły adresu URL
     const cleanFileName = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9.-]/g, "_");
     const filePath = `media_${Date.now()}_${cleanFileName}`;
 
-    const { data: uploadData, error: uploadError } = await db.storage
+    const { error: uploadError } = await db.storage
       .from('uploads')
       .upload(filePath, file, { cacheControl: '3600', upsert: true });
 
-    if (uploadError) {
-      console.error("Szczegóły błędu Storage:", uploadError);
-      return alert("Błąd wysyłania pliku: " + uploadError.message + "\nUpewnij się, że wykonałeś skrypt SQL dla uprawnień storage!");
-    }
+    if (uploadError) return alert("Błąd wysyłania załącznika: " + uploadError.message);
 
     const { data: urlData } = db.storage.from('uploads').getPublicUrl(filePath);
     media_url = urlData.publicUrl;
@@ -812,7 +827,7 @@ async function saveTask() {
   if (id) {
     await db.from('tasks').update({ title, content, media_url, media_type }).eq('id', id);
   } else {
-    const { error: insertError } = await db.from('tasks').insert([{
+    await db.from('tasks').insert([{
       subject_id: currentSubjectId,
       student_id: selectedStudentId,
       topic_id: currentTopicId,
@@ -823,11 +838,8 @@ async function saveTask() {
       media_url,
       media_type
     }]);
-
-    if (insertError) return alert("Błąd zapisu zadania w bazie: " + insertError.message);
   }
 
-  alert("Zadanie wraz z załącznikiem zostało pomyślnie wysłane!");
   resetTaskForm();
   loadTeacherTasks();
 }
@@ -877,13 +889,19 @@ async function saveFeedback(id) {
   alert("Uwagi zostały zapisane!");
 }
 
-/* UCZEŃ LOGIKA */
+/* UCZEŃ */
 async function loadStudentSubjects() {
-  const { data } = await db.from('subjects').select('*').eq('id', currentUser.subject_id);
+  const { data: allSubjects } = await db.from('subjects').select('*');
   const sel = document.getElementById("studentSubjectSelect");
-  sel.innerHTML = (data || []).map(s => `<option value="${s.id}">${s.name}</option>`).join("");
-  currentSubjectId = currentUser.subject_id;
-  loadStudentTopics();
+  sel.innerHTML = (allSubjects || []).map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+  
+  if (allSubjects && allSubjects.length > 0) {
+    currentSubjectId = currentUser.subject_id || allSubjects[0].id;
+    sel.value = currentSubjectId;
+    loadStudentTopics();
+  } else {
+    document.getElementById("studentTopicsGrid").innerHTML = "<p class='muted'>Brak dostępnych przedmiotów.</p>";
+  }
 }
 
 function changeStudentSubject() {
@@ -993,9 +1011,11 @@ async function loadStudentTasks() {
           <label style="font-size:0.85rem; font-weight:600;">Odpowiedź tekstowa (opcjonalnie):</label>
           <textarea id="ansText_${task.id}" placeholder="Wpisz komentarz lub obliczenia...">${task.answer_text || ''}</textarea>
 
-          <label style="font-size:0.85rem; font-weight:600;">
-            Tablica obliczeń (jak na Miro — przesuwaj, przybliżaj i pisz):
-          </label>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="font-size:0.85rem; font-weight:600;">
+              Obszar roboczy tablicy (obramowane pole $4000 \\times 2500$ px — przesuwaj rączką i przybliżaj):
+            </label>
+          </div>
 
           <div class="paint-box" id="paintbox_${task.id}">
             <div class="paint-toolbar" id="toolbar_${task.id}">
@@ -1025,7 +1045,7 @@ async function loadStudentTasks() {
             </div>
             
             <div class="board-viewport" id="viewport_${task.id}">
-              <canvas id="canvas_${task.id}" width="3000" height="2000" style="position: absolute; left: 0px; top: 0px; transform-origin: 0 0;"></canvas>
+              <canvas id="canvas_${task.id}" class="sheet-canvas" width="4000" height="2500"></canvas>
             </div>
             
             <div style="padding:0.6rem; text-align:right; background:#f8fafc; border-top:1px solid var(--border);">
@@ -1074,9 +1094,9 @@ function setupBoardEngine(task) {
     startY: 0,
     canvasStartX: 0,
     canvasStartY: 0,
-    panX: 0,
-    panY: 0,
-    scale: 1,
+    panX: 40,
+    panY: 40,
+    scale: 0.8,
     snapshot: null
   };
 
@@ -1191,6 +1211,7 @@ function setupBoardEngine(task) {
   window.addEventListener("touchend", stop);
   viewport.addEventListener("wheel", onWheel, { passive: false });
 
+  updateTransform();
   engine.updateTransform = updateTransform;
   boardRegistry[id] = engine;
 }
@@ -1211,16 +1232,16 @@ function setBoardTool(taskId, toolName, btn) {
 function zoomBoard(taskId, delta) {
   const engine = boardRegistry[taskId];
   if (!engine) return;
-  engine.scale = Math.min(Math.max(0.3, engine.scale + delta), 3.0);
+  engine.scale = Math.min(Math.max(0.2, engine.scale + delta), 2.5);
   engine.updateTransform();
 }
 
 function resetBoardTransform(taskId) {
   const engine = boardRegistry[taskId];
   if (!engine) return;
-  engine.panX = 0;
-  engine.panY = 0;
-  engine.scale = 1;
+  engine.panX = 40;
+  engine.panY = 40;
+  engine.scale = 0.8;
   engine.updateTransform();
 }
 
@@ -1231,7 +1252,7 @@ function toggleFullscreen(taskId) {
 
 function clearBoard(taskId) {
   const engine = boardRegistry[taskId];
-  if (engine) {
+  if (engine && confirm("Czy na pewno wyczyścić cały arkusz tablicy?")) {
     engine.ctx.clearRect(0, 0, engine.canvas.width, engine.canvas.height);
   }
 }
@@ -1253,37 +1274,52 @@ async function submitStudentWork(id) {
   }
 
   let answer_drawing = null;
-
   if (hasDrawing && engine) {
-    // Generujemy czysty plik Blob z Canvasa
     const blob = await new Promise(res => engine.canvas.toBlob(res, 'image/png'));
-    const filePath = `answer_${id}_${Date.now()}.png`;
-
-    const { data: uploadData, error: uploadError } = await db.storage
-      .from('uploads')
-      .upload(filePath, blob, { contentType: 'image/png', upsert: true });
-
-    if (uploadError) {
-      console.error("Błąd zapisu rysunku:", uploadError);
-      return alert("Nie udało się przesłać rysunku na serwer: " + uploadError.message);
-    }
-
-    const { data: urlData } = db.storage.from('uploads').getPublicUrl(filePath);
-    answer_drawing = urlData.publicUrl;
+    const filePath = `ans_${id}_${Date.now()}.png`;
+    const { error: upErr } = await db.storage.from('uploads').upload(filePath, blob, { contentType: 'image/png', upsert: true });
+    if (upErr) return alert("Błąd wysyłania rysunku: " + upErr.message);
+    const { data: { publicUrl } } = db.storage.from('uploads').getPublicUrl(filePath);
+    answer_drawing = publicUrl;
   }
 
-  const { error: updateError } = await db.from('tasks').update({
+  await db.from('tasks').update({
     answer_text: ansText,
     answer_drawing: answer_drawing,
     status: 'submitted'
   }).eq('id', id);
 
-  if (updateError) {
-    return alert("Błąd aktualizacji statusu zadania: " + updateError.message);
-  }
-
-  alert("Rozwiązanie zostało zapisane i wysłane do korepetytora!");
+  alert("Rozwiązanie zostało przesłane do korepetytora!");
   loadStudentTasks();
+}
+
+/* PODGLĄD RYSUNKU W MODALU */
+let modalImgScale = 1;
+
+function openImgModal(src) {
+  const modal = document.getElementById("imgPreviewModal");
+  const img = document.getElementById("modalPreviewImg");
+  const link = document.getElementById("downloadModalLink");
+  
+  img.src = src;
+  link.href = src;
+  modalImgScale = 1;
+  img.style.transform = "scale(1)";
+  modal.style.display = "flex";
+}
+
+function closeImgModal() {
+  document.getElementById("imgPreviewModal").style.display = "none";
+}
+
+function zoomModalImg(delta) {
+  modalImgScale = Math.max(0.4, modalImgScale + delta);
+  document.getElementById("modalPreviewImg").style.transform = `scale(${modalImgScale})`;
+}
+
+function resetModalImgZoom() {
+  modalImgScale = 1;
+  document.getElementById("modalPreviewImg").style.transform = "scale(1)";
 }
 </script>
 </body>
