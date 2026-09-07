@@ -87,7 +87,7 @@
     }
     textarea { min-height: 80px; resize: vertical; }
 
-    /* MIRO BOARD & CANVAS */
+    /* MIRO BOARD */
     .paint-box { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; margin-top: 1rem; position: relative; }
     .paint-box.fullscreen {
       position: fixed; inset: 0; z-index: 9999; border-radius: 0; margin: 0; display: flex; flex-direction: column; height: 100vh; width: 100vw;
@@ -104,13 +104,11 @@
 
     .board-viewport {
       width: 100%; height: 540px; overflow: hidden; position: relative;
-      background-color: #e2e8f0;
-      cursor: crosshair; flex: 1;
+      background-color: #e2e8f0; cursor: crosshair; flex: 1;
     }
     .board-viewport.pan-mode { cursor: grab; }
     .board-viewport.pan-mode:active { cursor: grabbing; }
 
-    /* Płótno z ramką i siatką */
     .sheet-canvas {
       position: absolute; left: 0px; top: 0px; transform-origin: 0 0;
       background-color: #ffffff;
@@ -139,6 +137,39 @@
 
     .table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
     .table th, .table td { padding: 0.75rem; border-bottom: 1px solid var(--border); text-align: left; }
+
+    /* POWIADOMIENIA */
+    .notif-bell { position: relative; cursor: pointer; font-size: 1.3rem; margin-right: 0.5rem; }
+    .notif-count {
+      position: absolute; top: -6px; right: -8px; background: var(--danger); color: white;
+      font-size: 0.7rem; font-weight: 700; border-radius: 999px; padding: 1px 5px;
+    }
+    .notif-panel {
+      position: absolute; right: 2rem; top: 4.2rem; width: 340px; background: white;
+      border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      z-index: 9999; display: none; max-height: 400px; overflow-y: auto; color: var(--text);
+    }
+    .notif-item { padding: 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .notif-item.unread { background: #f0fdf4; border-left: 3px solid var(--success); }
+
+    /* CZAT PŁYWAJĄCY */
+    .chat-btn {
+      position: fixed; bottom: 1.5rem; right: 1.5rem; width: 55px; height: 55px;
+      background: var(--primary); color: white; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center; font-size: 1.5rem; cursor: pointer;
+      box-shadow: 0 4px 15px rgba(37,99,235,0.4); z-index: 999;
+    }
+    .chat-window {
+      position: fixed; bottom: 5.5rem; right: 1.5rem; width: 340px; height: 440px;
+      background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      display: none; flex-direction: column; z-index: 999; border: 1px solid var(--border); overflow: hidden;
+    }
+    .chat-header { background: #0f172a; color: white; padding: 0.8rem 1rem; display: flex; justify-content: space-between; align-items: center; }
+    .chat-body { flex: 1; padding: 0.8rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; background: #f8fafc; font-size: 0.85rem; }
+    .msg-bubble { max-width: 80%; padding: 0.5rem 0.75rem; border-radius: 8px; line-height: 1.4; }
+    .msg-mine { align-self: flex-end; background: var(--primary); color: white; }
+    .msg-theirs { align-self: flex-start; background: #e2e8f0; color: var(--text); }
+    .chat-footer { padding: 0.5rem; display: flex; gap: 0.4rem; background: white; border-top: 1px solid var(--border); }
   </style>
 </head>
 <body>
@@ -148,13 +179,27 @@
     <span>📐</span> <span id="panelTitleText">Panel Korepetytora</span>
   </div>
   <div id="headerUserInfo" style="display:none; align-items: center; gap: 1rem;">
+    <!-- Dzwonek Powiadomień -->
+    <div class="notif-bell" onclick="toggleNotifPanel()">
+      🔔<span class="notif-count" id="notifBadge" style="display:none;">0</span>
+    </div>
+
     <span id="loggedUserLabel" style="font-size: 0.9rem;"></span>
     <button class="btn btn-secondary" onclick="logout()" style="padding: 0.3rem 0.7rem;">Wyloguj</button>
   </div>
 </header>
 
+<!-- ROZWIJANY PANEL POWIADOMIEŃ -->
+<div class="notif-panel" id="notifPanel">
+  <div style="padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+    <strong>Powiadomienia</strong>
+    <button class="btn btn-secondary" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" onclick="markAllNotifsRead()">Odczytaj wszystkie</button>
+  </div>
+  <div id="notifList"></div>
+</div>
+
 <div class="container">
-  <!-- LOGOWANIE (CZYSTE, BEZ PODPOWIEDZI HASEŁ) -->
+  <!-- LOGOWANIE -->
   <div id="loginSection" class="login-container">
     <div class="card">
       <h2 style="text-align:center; margin-bottom: 1.5rem;">Logowanie</h2>
@@ -311,6 +356,20 @@
   </div>
 </div>
 
+<!-- FLOATING CZAT -->
+<div id="chatFloatingBtn" class="chat-btn" style="display:none;" onclick="toggleChatWindow()">💬</div>
+<div id="chatWindow" class="chat-window">
+  <div class="chat-header">
+    <span id="chatTitle">Czat z nauczycielem</span>
+    <span style="cursor:pointer;" onclick="toggleChatWindow()">✖</span>
+  </div>
+  <div class="chat-body" id="chatBody"></div>
+  <form class="chat-footer" onsubmit="sendChatMessage(event)">
+    <input type="text" id="chatInput" placeholder="Napisz wiadomość..." style="margin:0; padding:0.4rem;" autocomplete="off">
+    <button type="submit" class="btn" style="padding:0.4rem 0.8rem;">Wyślij</button>
+  </form>
+</div>
+
 <!-- MODAL PODGLĄDU RYSUNKU DLA NAUCZYCIELA -->
 <div id="imgPreviewModal" class="modal-overlay" style="display:none;">
   <div class="card" style="max-width: 90vw; max-height: 90vh; width: auto; display: flex; flex-direction: column; overflow: hidden; padding: 1rem;">
@@ -330,7 +389,7 @@
   </div>
 </div>
 
-<!-- INNE MODALE -->
+<!-- MODALE -->
 <div id="addSubjectModal" class="modal-overlay" style="display:none;">
   <div class="card" style="max-width: 400px; width: 90%;">
     <h3>➕ Dodaj nowy przedmiot</h3>
@@ -431,16 +490,131 @@ async function handleLogin(e) {
   } else if (data.role === 'teacher') {
     document.getElementById("panelTitleText").textContent = "Panel Korepetytora";
     document.getElementById("teacherView").style.display = "block";
+    document.getElementById("chatFloatingBtn").style.display = "flex";
     loadTeacherSubjects();
   } else if (data.role === 'student') {
     document.getElementById("panelTitleText").textContent = "Panel Ucznia";
     document.getElementById("studentView").style.display = "block";
     document.getElementById("studentWelcome").textContent = `Cześć, ${data.name}!`;
+    document.getElementById("chatFloatingBtn").style.display = "flex";
     loadStudentSubjects();
   }
+
+  loadNotifications();
+  setInterval(loadNotifications, 10000); // Odświeżanie powiadomień co 10s
 }
 
 function logout() { location.reload(); }
+
+/* SYSTEM POWIADOMIEŃ */
+async function createNotification(userId, title, body) {
+  if (!userId) return;
+  await db.from('notifications').insert([{ user_id: userId, title, body, is_read: false }]);
+}
+
+async function loadNotifications() {
+  if (!currentUser) return;
+  const { data: list } = await db.from('notifications').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(20);
+  
+  const unreadCount = (list || []).filter(n => !n.is_read).length;
+  const badge = document.getElementById("notifBadge");
+  if (unreadCount > 0) {
+    badge.textContent = unreadCount;
+    badge.style.display = "inline-block";
+  } else {
+    badge.style.display = "none";
+  }
+
+  const container = document.getElementById("notifList");
+  if (!list || list.length === 0) {
+    container.innerHTML = `<p class="muted" style="padding:1rem; text-align:center;">Brak nowych powiadomień.</p>`;
+    return;
+  }
+
+  container.innerHTML = list.map(n => `
+    <div class="notif-item ${!n.is_read ? 'unread' : ''}">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <strong>${n.title}</strong>
+        <span class="muted" style="font-size:0.7rem;">${new Date(n.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+      </div>
+      <div style="margin-top:0.2rem;">${n.body}</div>
+    </div>
+  `).join("");
+}
+
+function toggleNotifPanel() {
+  const p = document.getElementById("notifPanel");
+  p.style.display = p.style.display === "block" ? "none" : "block";
+}
+
+async function markAllNotifsRead() {
+  await db.from('notifications').update({ is_read: true }).eq('user_id', currentUser.id);
+  loadNotifications();
+}
+
+/* SYSTEM CZATU */
+let chatPolling = null;
+
+function toggleChatWindow() {
+  const w = document.getElementById("chatWindow");
+  const isOpen = w.style.display === "flex";
+  w.style.display = isOpen ? "none" : "flex";
+
+  if (!isOpen) {
+    loadChatMessages();
+    chatPolling = setInterval(loadChatMessages, 4000);
+  } else {
+    clearInterval(chatPolling);
+  }
+}
+
+async function loadChatMessages() {
+  let studentId = currentUser.role === 'student' ? currentUser.id : selectedStudentId;
+  let teacherId = currentUser.role === 'teacher' ? currentUser.id : currentUser.teacher_id;
+
+  if (!studentId || !teacherId) return;
+
+  const { data: msgs } = await db.from('messages')
+    .select('*')
+    .eq('student_id', studentId)
+    .eq('teacher_id', teacherId)
+    .order('created_at', { ascending: true });
+
+  const body = document.getElementById("chatBody");
+  body.innerHTML = (msgs || []).map(m => `
+    <div class="msg-bubble ${m.sender_id === currentUser.id ? 'msg-mine' : 'msg-theirs'}">
+      <div style="font-size:0.7rem; opacity:0.8; margin-bottom:2px;">${m.sender_name}</div>
+      ${m.text}
+    </div>
+  `).join("");
+  body.scrollTop = body.scrollHeight;
+}
+
+async function sendChatMessage(e) {
+  e.preventDefault();
+  const input = document.getElementById("chatInput");
+  const text = input.value.trim();
+  if (!text) return;
+
+  let studentId = currentUser.role === 'student' ? currentUser.id : selectedStudentId;
+  let teacherId = currentUser.role === 'teacher' ? currentUser.id : currentUser.teacher_id;
+  let recipientId = currentUser.role === 'student' ? teacherId : studentId;
+
+  await db.from('messages').insert([{
+    subject_id: currentSubjectId,
+    student_id: studentId,
+    teacher_id: teacherId,
+    sender_id: currentUser.id,
+    sender_name: currentUser.name,
+    text
+  }]);
+
+  input.value = "";
+  loadChatMessages();
+
+  // Powiadomienie o nowej wiadomości
+  createNotification(recipientId, "💬 Nowa wiadomość", `${currentUser.name}: ${text.substring(0, 40)}...`);
+}
 
 /* SUPERADMIN */
 async function loadSuperadmin() {
@@ -769,13 +943,13 @@ async function loadTeacherTasks() {
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom: 0.6rem;">
             <label style="font-weight:700; font-size:0.85rem;">Ocena odpowiedzi:</label>
             <div style="display:flex; gap:0.5rem;">
-              <button class="btn btn-success" onclick="gradeTask('${task.id}', true)">✅ Dobrze (Do archiwum)</button>
-              <button class="btn btn-danger" onclick="gradeTask('${task.id}', false)">❌ Źle (Do poprawki)</button>
+              <button class="btn btn-success" onclick="gradeTask('${task.id}', true, '${task.student_id}', '${task.title}')">✅ Dobrze (Do archiwum)</button>
+              <button class="btn btn-danger" onclick="gradeTask('${task.id}', false, '${task.student_id}', '${task.title}')">❌ Źle (Do poprawki)</button>
             </div>
           </div>
           <div style="display:flex; gap:0.5rem;">
             <input type="text" id="feedback_${task.id}" value="${task.feedback || ''}" placeholder="Wpisz uwagi / wskazówki...">
-            <button class="btn btn-secondary" style="height:38px;" onclick="saveFeedback('${task.id}')">Wyślij uwagę</button>
+            <button class="btn btn-secondary" style="height:38px;" onclick="saveFeedback('${task.id}', '${task.student_id}', '${task.title}')">Wyślij uwagę</button>
           </div>
         </div>
       </div>
@@ -783,16 +957,18 @@ async function loadTeacherTasks() {
   }).join("");
 }
 
-async function gradeTask(id, isGood) {
+async function gradeTask(id, isGood, studentId, taskTitle) {
   const feedbackInput = document.getElementById(`feedback_${id}`);
   const feedback = feedbackInput ? feedbackInput.value : "";
 
   if (isGood) {
     await db.from('tasks').update({ archived: true, status: 'submitted', feedback }).eq('id', id);
     alert("Zadanie zaakceptowane i przeniesione do archiwum!");
+    createNotification(studentId, "✅ Zadanie zaakceptowane", `Nauczyciel ocenił zadanie "${taskTitle}" jako DOBRZE!`);
   } else {
     await db.from('tasks').update({ archived: false, status: 'correction', feedback }).eq('id', id);
     alert("Zadanie oznaczono do poprawki.");
+    createNotification(studentId, "⚠️ Zadanie do poprawki", `Nauczyciel zwrócił zadanie "${taskTitle}" do poprawki!`);
   }
   loadTeacherTasks();
 }
@@ -838,6 +1014,9 @@ async function saveTask() {
       media_url,
       media_type
     }]);
+
+    // Powiadomienie dla ucznia o nowym zadaniu
+    createNotification(selectedStudentId, "📚 Nowe zadanie domowe", `Nauczyciel dodał zadanie: "${title}"`);
   }
 
   resetTaskForm();
@@ -883,10 +1062,11 @@ async function deleteTask(id) {
   }
 }
 
-async function saveFeedback(id) {
+async function saveFeedback(id, studentId, taskTitle) {
   const val = document.getElementById(`feedback_${id}`).value;
   await db.from('tasks').update({ feedback: val }).eq('id', id);
   alert("Uwagi zostały zapisane!");
+  createNotification(studentId, "💬 Nowa uwaga do zadania", `Nauczyciel skomentował zadanie "${taskTitle}": ${val.substring(0, 40)}...`);
 }
 
 /* UCZEŃ */
@@ -1049,7 +1229,7 @@ async function loadStudentTasks() {
             </div>
             
             <div style="padding:0.6rem; text-align:right; background:#f8fafc; border-top:1px solid var(--border);">
-              <button class="btn btn-success" onclick="submitStudentWork('${task.id}')">
+              <button class="btn btn-success" onclick="submitStudentWork('${task.id}', '${task.title}')">
                 ${isCorrection ? 'Wyślij poprawione zadanie' : 'Zatwierdź i wyślij rozwiązanie'}
               </button>
             </div>
@@ -1257,7 +1437,7 @@ function clearBoard(taskId) {
   }
 }
 
-async function submitStudentWork(id) {
+async function submitStudentWork(id, taskTitle) {
   const engine = boardRegistry[id];
   const ansText = document.getElementById(`ansText_${id}`).value.trim();
 
@@ -1291,6 +1471,9 @@ async function submitStudentWork(id) {
 
   alert("Rozwiązanie zostało przesłane do korepetytora!");
   loadStudentTasks();
+
+  // Powiadomienie dla nauczyciela o odesłaniu zadania
+  createNotification(currentUser.teacher_id, "✍️ Odesłano rozwiązanie", `Uczeń ${currentUser.name} rozwiązał zadanie: "${taskTitle}"`);
 }
 
 /* PODGLĄD RYSUNKU W MODALU */
