@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Platforma Korepetycji — Panel Główny</title>
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --primary: #2563eb; --bg: #f8fafc; --card: #ffffff;
+      --text: #0f172a; --muted: #64748b; --border: #e2e8f0;
+      --success: #16a34a; --danger: #dc2626; --warning: #d97706;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    header { background: #0f172a; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    .container { max-width: 1180px; width: 100%; margin: 1.5rem auto; padding: 0 1rem; flex: 1; }
+    .card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .btn { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.5rem 0.9rem; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; background: var(--primary); color: white; }
+    .btn-secondary { background: #e2e8f0; color: #334155; }
+    .btn-danger { background: #fee2e2; color: var(--danger); }
+    .btn-success { background: var(--success); color: white; }
+    input, select, textarea { width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border); margin: 0.3rem 0 1rem; }
+    .badge { padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; display: inline-block; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+    .modal { position: fixed; inset: 0; background: rgba(15,23,42,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .table th, .table td { padding: 0.75rem; border-bottom: 1px solid var(--border); text-align: left; }
+    .paint-box { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; margin-top: 1rem; }
+    .board-viewport { width: 100%; height: 500px; overflow: hidden; position: relative; background: radial-gradient(#cbd5e1 1.2px, transparent 1.2px) 0 0/24px 24px #fcfcfc; cursor: crosshair; }
+    .pan-mode { cursor: grab !important; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div style="font-weight: 800; font-size: 1.2rem;">📐 Platforma Edukacyjna</div>
+  <div id="headerAuth" style="display:none; align-items: center; gap: 1rem;">
+    <span id="userNameBadge"></span>
+    <button class="btn btn-secondary" onclick="logout()">Wyloguj</button>
+  </div>
+</header>
+
+<div class="container">
+  <!-- LOGOWANIE -->
+  <div id="loginView" style="max-width: 400px; margin: 4rem auto;">
+    <div class="card">
+      <h2 style="text-align:center; margin-bottom: 1rem;">Zaloguj się</h2>
+      <form onsubmit="handleLogin(event)">
+        <label>Login:</label>
+        <input type="text" id="logUser" required placeholder="Login...">
+        <label>Hasło:</label>
+        <input type="password" id="logPass" required placeholder="Hasło...">
+        <button type="submit" class="btn" style="width: 100%; justify-content: center;">Wejdź do systemu</button>
+      </form>
+      <div style="margin-top:1rem; font-size:0.8rem; color:var(--muted); background:#f1f5f9; padding:0.6rem; border-radius:6px;">
+        Superadmin: <strong>superadmin</strong> / <strong>super123</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. PANEL SUPERADMINA (Główny Właściciel) -->
+  <div id="superadminView" style="display:none;">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h2>Panel Superadmina</h2>
+          <p style="color:var(--muted);">Zarządzaj wszystkimi korepetytorami, ich uczniami i bazą.</p>
+        </div>
+        <button class="btn" onclick="openAddTeacherModal()">➕ Dodaj Korepetytora</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Lista Korepetytorów</h3>
+      <table class="table" id="teachersTable">
+        <thead>
+          <tr><th>Imię i Nazwisko</th><th>Login</th><th>Hasło</th><th>Liczba uczniów</th><th>Akcje</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 2. PANEL KOREPETYTORA -->
+  <div id="teacherView" style="display:none;">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <label style="font-weight:700; margin:0;">Przedmiot:</label>
+          <select id="teacherSubSel" onchange="loadTeacherStudents()" style="width:auto; margin:0;"></select>
+          <button class="btn btn-secondary" onclick="addSubjectPrompt()">➕ Przedmiot</button>
+        </div>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <label style="font-weight:700; margin:0;">Uczeń:</label>
+          <select id="teacherStuSel" onchange="loadTeacherTopics()" style="width:auto; margin:0;"></select>
+          <button class="btn btn-secondary" onclick="openAddStudentModal()">➕ Nowy uczeń</button>
+          <button class="btn btn-secondary" onclick="manageCurrentStudent()">⚙️ Zarządzaj</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="teacherTopicList" class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h3>Tematy lekcji</h3>
+        <button class="btn" onclick="addTopicPrompt()">➕ Dodaj temat</button>
+      </div>
+      <div id="topicsGrid" class="grid"></div>
+    </div>
+
+    <!-- Zadania wewnątrz tematu -->
+    <div id="teacherTasksWrap" class="card" style="display:none;">
+      <button class="btn btn-secondary" style="margin-bottom:1rem;" onclick="backToTopicsTeacher()">← Wróć do tematów</button>
+      <h3 id="currentTopicTitle" style="margin-bottom:1rem;"></h3>
+      
+      <div style="background:#f8fafc; border:1px solid var(--border); padding:1rem; border-radius:8px; margin-bottom:1rem;">
+        <h4>Dodaj zadanie domowe</h4>
+        <input type="text" id="tTitle" placeholder="Tytuł zadania...">
+        <textarea id="tContent" placeholder="Treść zadania ($...$ dla KaTeX)..."></textarea>
+        <button class="btn" onclick="createTask()">Wyślij zadanie uczniowi</button>
+      </div>
+
+      <div id="teacherTasksContainer"></div>
+    </div>
+  </div>
+
+  <!-- 3. PANEL UCZNIA -->
+  <div id="studentView" style="display:none;">
+    <div class="card">
+      <h2 id="stuGreeting">Cześć!</h2>
+      <p style="color:var(--muted);">Rozwiązuj zadania na tablicy i wysyłaj je do sprawdzenia.</p>
+    </div>
+    
+    <div id="stuTopicsCard" class="card">
+      <h3>Twoje tematy lekcji</h3>
+      <div id="stuTopicsGrid" class="grid" style="margin-top:1rem;"></div>
+    </div>
+
+    <div id="stuTasksCard" class="card" style="display:none;">
+      <button class="btn btn-secondary" style="margin-bottom:1rem;" onclick="backToTopicsStudent()">← Wróć do tematów</button>
+      <div id="stuTasksContainer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DODAJ / EDYTUJ KOREPETYTORA -->
+<div id="teacherModal" class="modal" style="display:none;">
+  <div class="card" style="max-width:400px; width:90%;">
+    <h3 id="teacherModalTitle">Korepetytor</h3>
+    <input type="hidden" id="tmId">
+    <label>Imię i nazwisko:</label>
+    <input type="text" id="tmName" required>
+    <label>Login:</label>
+    <input type="text" id="tmLogin" required>
+    <label>Hasło:</label>
+    <input type="text" id="tmPass" required>
+    <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+      <button class="btn btn-secondary" onclick="closeTeacherModal()">Anuluj</button>
+      <button class="btn" onclick="saveTeacher()">Zapisz</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= KONFIGURACJA SUPABASE ================= */
+// WKLEJ TUTAJ SWOJE DANE Z SUPABASE (Project Settings -> API):
+const SUPABASE_URL = "https://xhfqdzxjgodyozcusthc.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoZnFkenhqZ29keW96Y3VzdGhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3OTQ3MDYsImV4cCI6MjEwNDM3MDcwNn0.xIs6smzq5k6R6epv8MuVEFzgoacdhUpNrkHApMxgTWI";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let currentTeacherId = null;
+let currentSubjectId = null;
+let currentStudentId = null;
+let currentTopicId = null;
+
+/* LOGOWANIE */
+async function handleLogin(e) {
+  e.preventDefault();
+  const u = document.getElementById("logUser").value.trim();
+  const p = document.getElementById("logPass").value.trim();
+
+  const { data, error } = await db.from('users').select('*').eq('login', u).eq('password', p).single();
+  if (error || !data) return alert("Błędny login lub hasło!");
+
+  currentUser = data;
+  document.getElementById("loginView").style.display = "none";
+  document.getElementById("headerAuth").style.display = "flex";
+  document.getElementById("userNameBadge").textContent = `${data.name} (${data.role})`;
+
+  if (data.role === 'superadmin') {
+    document.getElementById("superadminView").style.display = "block";
+    loadSuperadmin();
+  } else if (data.role === 'teacher') {
+    document.getElementById("teacherView").style.display = "block";
+    currentTeacherId = data.id;
+    loadTeacherSubjects();
+  } else if (data.role === 'student') {
+    document.getElementById("studentView").style.display = "block";
+    document.getElementById("stuGreeting").textContent = `Cześć, ${data.name}!`;
+    loadStudentTopics();
+  }
+}
+
+function logout() { location.reload(); }
+
+/* SUPERADMIN LOGIC */
+async function loadSuperadmin() {
+  const { data: teachers } = await db.from('users').select('*').eq('role', 'teacher');
+  const tbody = document.querySelector("#teachersTable tbody");
+  tbody.innerHTML = "";
+
+  for (let t of (teachers || [])) {
+    const { count } = await db.from('users').select('*', { count: 'exact', head: true }).eq('teacher_id', t.id);
+    tbody.innerHTML += `
+      <tr>
+        <td><strong>${t.name}</strong></td>
+        <td>${t.login}</td>
+        <td>${t.password}</td>
+        <td><span class="badge" style="background:#e0f2fe; color:#0369a1;">${count || 0} uczniów</span></td>
+        <td>
+          <button class="btn btn-secondary" onclick="editTeacher('${t.id}','${t.name}','${t.login}','${t.password}')">Edytuj</button>
+          <button class="btn btn-danger" onclick="deleteTeacher('${t.id}')">Usuń</button>
+        </td>
+      </tr>
+    `;
+  }
+}
+
+function openAddTeacherModal() {
+  document.getElementById("tmId").value = "";
+  document.getElementById("tmName").value = "";
+  document.getElementById("tmLogin").value = "";
+  document.getElementById("tmPass").value = "";
+  document.getElementById("teacherModal").style.display = "flex";
+}
+function editTeacher(id, name, login, pass) {
+  document.getElementById("tmId").value = id;
+  document.getElementById("tmName").value = name;
+  document.getElementById("tmLogin").value = login;
+  document.getElementById("tmPass").value = pass;
+  document.getElementById("teacherModal").style.display = "flex";
+}
+function closeTeacherModal() { document.getElementById("teacherModal").style.display = "none"; }
+
+async function saveTeacher() {
+  const id = document.getElementById("tmId").value;
+  const name = document.getElementById("tmName").value.trim();
+  const login = document.getElementById("tmLogin").value.trim();
+  const password = document.getElementById("tmPass").value.trim();
+
+  if (id) {
+    await db.from('users').update({ name, login, password }).eq('id', id);
+  } else {
+    await db.from('users').insert([{ role: 'teacher', name, login, password }]);
+  }
+  closeTeacherModal();
+  loadSuperadmin();
+}
+
+async function deleteTeacher(id) {
+  if (confirm("Usunąć tego korepetytora i wszystkie jego dane?")) {
+    await db.from('users').delete().eq('id', id);
+    loadSuperadmin();
+  }
+}
+
+/* KOREPETYTOR LOGIC */
+async function loadTeacherSubjects() {
+  const { data } = await db.from('subjects').select('*').eq('teacher_id', currentTeacherId);
+  const sel = document.getElementById("teacherSubSel");
+  sel.innerHTML = (data || []).map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+  if (data && data.length > 0) {
+    currentSubjectId = data[0].id;
+    loadTeacherStudents();
+  }
+}
+
+async function addSubjectPrompt() {
+  const name = prompt("Nazwa przedmiotu (np. Matematyka):");
+  if (!name) return;
+  const { data } = await db.from('subjects').insert([{ teacher_id: currentTeacherId, name }]).select().single();
+  loadTeacherSubjects();
+}
+
+async function loadTeacherStudents() {
+  currentSubjectId = document.getElementById("teacherSubSel").value;
+  const { data } = await db.from('users').select('*').eq('teacher_id', currentTeacherId);
+  const sel = document.getElementById("teacherStuSel");
+  sel.innerHTML = (data || []).map(s => `<option value="${s.id}">${s.name} (${s.login})</option>`).join("");
+  if (data && data.length > 0) {
+    currentStudentId = data[0].id;
+    loadTeacherTopics();
+  } else {
+    document.getElementById("topicsGrid").innerHTML = "<p style='color:var(--muted)'>Brak uczniów. Dodaj pierwszego ucznia.</p>";
+  }
+}
+
+async function openAddStudentModal() {
+  const name = prompt("Imię i nazwisko ucznia:");
+  const login = prompt("Login ucznia:");
+  const password = prompt("Hasło ucznia:");
+  if (!name || !login || !password) return;
+
+  await db.from('users').insert([{
+    role: 'student', teacher_id: currentTeacherId, subject_id: currentSubjectId, name, login, password
+  }]);
+  loadTeacherStudents();
+}
+
+async function manageCurrentStudent() {
+  const { data: st } = await db.from('users').select('*').eq('id', currentStudentId).single();
+  const newName = prompt("Zmień imię i nazwisko:", st.name);
+  const newPass = prompt("Zmień hasło:", st.password);
+  if (newName && newPass) {
+    await db.from('users').update({ name: newName, password: newPass }).eq('id', currentStudentId);
+    loadTeacherStudents();
+  }
+}
+
+async function loadTeacherTopics() {
+  currentStudentId = document.getElementById("teacherStuSel").value;
+  const { data: topics } = await db.from('topics').select('*').eq('student_id', currentStudentId);
+  const grid = document.getElementById("topicsGrid");
+
+  grid.innerHTML = (topics || []).map(top => `
+    <div class="card" style="cursor:pointer; margin:0;" onclick="openTeacherTopic('${top.id}','${top.name}')">
+      <h3 style="color:var(--primary);">${top.name}</h3>
+      <p style="font-size:0.85rem; color:var(--muted); margin-top:0.4rem;">Kliknij, aby zarządzać zadaniami →</p>
+    </div>
+  `).join("");
+}
+
+async function addTopicPrompt() {
+  const name = prompt("Nazwa tematu lekcji:");
+  if (!name) return;
+  await db.from('topics').insert([{ subject_id: currentSubjectId, student_id: currentStudentId, name }]);
+  loadTeacherTopics();
+}
+
+function openTeacherTopic(id, name) {
+  currentTopicId = id;
+  document.getElementById("currentTopicTitle").textContent = "Temat: " + name;
+  document.getElementById("teacherTopicList").style.display = "none";
+  document.getElementById("teacherTasksWrap").style.display = "block";
+  loadTeacherTasks();
+}
+
+function backToTopicsTeacher() {
+  document.getElementById("teacherTopicList").style.display = "block";
+  document.getElementById("teacherTasksWrap").style.display = "none";
+  loadTeacherTopics();
+}
+
+async function createTask() {
+  const title = document.getElementById("tTitle").value.trim();
+  const content = document.getElementById("tContent").value.trim();
+  if (!title || !content) return alert("Uzupełnij pola!");
+
+  await db.from('tasks').insert([{
+    subject_id: currentSubjectId, student_id: currentStudentId, topic_id: currentTopicId, title, content
+  }]);
+  document.getElementById("tTitle").value = "";
+  document.getElementById("tContent").value = "";
+  loadTeacherTasks();
+}
+
+async function loadTeacherTasks() {
+  const { data: tasks } = await db.from('tasks').select('*').eq('topic_id', currentTopicId);
+  const cont = document.getElementById("teacherTasksContainer");
+
+  cont.innerHTML = (tasks || []).map(t => `
+    <div class="card" style="border-left: 5px solid ${t.status === 'submitted' ? 'var(--success)' : '#cbd5e1'};">
+      <div style="display:flex; justify-content:space-between;">
+        <h4>${t.title}</h4>
+        <span class="badge">${t.status}</span>
+      </div>
+      <p style="margin: 0.5rem 0;">${t.content}</p>
+      ${t.answer_drawing ? `<img src="${t.answer_drawing}" style="max-width:100%; border:1px solid #ddd; border-radius:6px; margin-top:0.5rem;">` : ''}
+      <div style="margin-top:1rem; display:flex; gap:0.5rem;">
+        <button class="btn btn-success" onclick="gradeTask('${t.id}', true)">Dobrze (Archiwum)</button>
+        <button class="btn btn-danger" onclick="gradeTask('${t.id}', false)">Do poprawki</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function gradeTask(id, ok) {
+  await db.from('tasks').update({ status: ok ? 'approved' : 'correction', archived: ok }).eq('id', id);
+  loadTeacherTasks();
+}
+
+/* UCZEŃ LOGIC */
+async function loadStudentTopics() {
+  const { data: topics } = await db.from('topics').select('*').eq('student_id', currentUser.id);
+  const grid = document.getElementById("stuTopicsGrid");
+  grid.innerHTML = (topics || []).map(t => `
+    <div class="card" style="cursor:pointer; margin:0;" onclick="openStudentTopic('${t.id}')">
+      <h3 style="color:var(--primary);">${t.name}</h3>
+    </div>
+  `).join("");
+}
+
+function openStudentTopic(id) {
+  currentTopicId = id;
+  document.getElementById("stuTopicsCard").style.display = "none";
+  document.getElementById("stuTasksCard").style.display = "block";
+  loadStudentTasks();
+}
+
+function backToTopicsStudent() {
+  document.getElementById("stuTopicsCard").style.display = "block";
+  document.getElementById("stuTasksCard").style.display = "none";
+}
+
+async function loadStudentTasks() {
+  const { data: tasks } = await db.from('tasks').select('*').eq('topic_id', currentTopicId);
+  const cont = document.getElementById("stuTasksContainer");
+
+  cont.innerHTML = (tasks || []).map(t => `
+    <div class="card">
+      <h3>${t.title}</h3>
+      <p style="margin: 0.6rem 0;">${t.content}</p>
+      <div class="paint-box">
+        <div class="board-viewport" id="vp_${t.id}">
+          <canvas id="can_${t.id}" width="2400" height="1600" style="position:absolute; left:0; top:0;"></canvas>
+        </div>
+        <div style="padding:0.6rem; text-align:right;">
+          <button class="btn btn-success" onclick="submitWork('${t.id}')">Wyślij rozwiązanie</button>
+        </div>
+      </div>
+    </div>
+  `).join("");
+
+  setTimeout(() => {
+    (tasks || []).forEach(t => initCanvas(t.id));
+  }, 100);
+}
+
+function initCanvas(id) {
+  const c = document.getElementById(`can_${id}`);
+  if (!c) return;
+  const ctx = c.getContext("2d");
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  let draw = false;
+
+  c.addEventListener("mousedown", e => { draw = true; ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); });
+  c.addEventListener("mousemove", e => { if (draw) { ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); } });
+  window.addEventListener("mouseup", () => draw = false);
+}
+
+async function submitWork(taskId) {
+  const c = document.getElementById(`can_${taskId}`);
+  c.toBlob(async blob => {
+    const fileName = `answer_${taskId}_${Date.now()}.png`;
+    // Wysyłamy plik do chmury Supabase Storage
+    await db.storage.from('uploads').upload(fileName, blob);
+    const { data: { publicUrl } } = db.storage.from('uploads').getPublicUrl(fileName);
+
+    // Zapisujemy link w bazie
+    await db.from('tasks').update({ answer_drawing: publicUrl, status: 'submitted' }).eq('id', taskId);
+    alert("Wysłano zadanie do sprawdzenia!");
+  });
+}
+</script>
+</body>
+</html>
